@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Adib Ahsan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lenis Smooth Scroll -->
+    <script src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --chrome-gradient: linear-gradient(
+                180deg, 
+                #ffffff 0%, 
+                #a1a1aa 45%, 
+                #3f3f46 50%, 
+                #71717a 55%, 
+                #ffffff 100%
+            );
+        }
+
+        /* Lenis setup */
+        html.lenis, html.lenis body {
+            height: auto;
+        }
+        .lenis.lenis-smooth {
+            scroll-behavior: auto !important;
+        }
+        .lenis.lenis-smooth [data-lenis-prevent] {
+            overscroll-behavior: contain;
+        }
+        .lenis.lenis-stopped {
+            overflow: hidden;
+        }
+        .lenis.lenis-scrolling iframe {
+            pointer-events: none;
+        }
+
+        body {
+            background-color: #020202;
+            color: #ffffff;
+            font-family: 'Bodoni Moda', serif;
+            overflow-x: hidden;
+            margin: 0;
+            cursor: crosshair;
+            -webkit-tap-highlight-color: transparent;
+            opacity: 0;
+            transition: opacity 2s ease;
+        }
+
+        body.is-loaded {
+            opacity: 1;
+        }
+
+        /* Preloader */
+        #preloader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #020202;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 1.5s cubic-bezier(0.16, 1, 0.3, 1), visibility 1.5s;
+        }
+
+        #preloader.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        /* Starfield Canvas */
+        #starfield {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Chromecore Text Effect */
+        .chrome-text {
+            background: var(--chrome-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-size: 100% 200%;
+            animation: shine 8s linear infinite;
+            filter: drop-shadow(0 0 15px rgba(255,255,255,0.1));
+            letter-spacing: 0.25em;
+            line-height: 1.1;
+            white-space: nowrap;
+            will-change: transform, letter-spacing, opacity;
+            opacity: 0;
+            transform: scale(0.98);
+            transition: 
+                opacity 3s cubic-bezier(0.16, 1, 0.3, 1),
+                letter-spacing 3.5s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 3.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        body.is-ready .chrome-text {
+            opacity: 1;
+            letter-spacing: -0.02em;
+            transform: scale(1);
+        }
+
+        @keyframes shine {
+            0% { background-position: 0% 0%; }
+            100% { background-position: 0% 200%; }
+        }
+
+        /* Premium Glass/Chrome Button */
+        .btn-chrome {
+            position: relative;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1.2rem 3.5rem;
+            border-radius: 100px;
+            font-family: 'Bodoni Moda', serif;
+            font-style: italic;
+            font-size: 1.2rem;
+            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow: hidden;
+            color: rgba(255,255,255,0.7);
+            width: 100%;
+            max-width: 280px;
+            text-align: center;
+            
+            /* Reveal Animation Initial State */
+            opacity: 0;
+            transform: translateY(40px);
+            will-change: transform, opacity;
+        }
+
+        .btn-chrome.reveal {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @media (hover: hover) {
+            .btn-chrome:hover {
+                transform: translateY(-8px) scale(1.03);
+                border-color: rgba(255, 255, 255, 0.4);
+                color: #fff;
+                box-shadow: 0 30px 60px rgba(0,0,0,0.6), inset 0 0 15px rgba(255,255,255,0.1);
+            }
+        }
+
+        .btn-chrome:active {
+            transform: scale(0.96);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        section {
+            position: relative;
+            z-index: 10;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 0 2rem;
+        }
+
+        /* Minimalist Line Indicator */
+        .scroll-line {
+            position: absolute;
+            bottom: 4rem;
+            width: 1px;
+            height: 80px;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.6), transparent);
+            animation: line-slide 3s infinite cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0;
+            transition: opacity 2s ease 2s;
+        }
+
+        body.is-ready .scroll-line {
+            opacity: 1;
+        }
+
+        @keyframes line-slide {
+            0% { transform: scaleY(0); transform-origin: top; opacity: 0; }
+            45% { transform: scaleY(1); transform-origin: top; opacity: 0.6; }
+            55% { transform: scaleY(1); transform-origin: bottom; opacity: 0.6; }
+            100% { transform: scaleY(0); transform-origin: bottom; opacity: 0; }
+        }
+
+        /* Footer Styles */
+        footer {
+            position: relative;
+            z-index: 10;
+            padding: 4rem 2rem;
+            text-align: center;
+            background: linear-gradient(to bottom, transparent, #000);
+        }
+
+        .footer-text {
+            font-size: 0.85rem;
+            letter-spacing: 0.15em;
+            color: rgba(255, 255, 255, 0.4);
+            font-weight: 300;
+            text-transform: uppercase;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .footer-text.reveal {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .footer-link {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            transition: color 0.4s ease;
+            position: relative;
+        }
+
+        .footer-link::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0;
+            height: 1px;
+            background: var(--chrome-gradient);
+            transition: width 0.4s ease;
+        }
+
+        .footer-link:hover {
+            color: #fff;
+        }
+
+        .footer-link:hover::after {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Load-in screen -->
+    <div id="preloader"></div>
+
+    <canvas id="starfield"></canvas>
+
+    <!-- Hero Section -->
+    <section>
+        <div class="text-center w-full overflow-visible">
+            <h1 class="text-5xl sm:text-7xl md:text-8xl lg:text-9xl chrome-text font-light mb-4">
+                Adib Ahsan
+            </h1>
+        </div>
+        <div class="scroll-line"></div>
+    </section>
+
+    <!-- Interactive Section -->
+    <section class="bg-gradient-to-b from-transparent to-black" id="action-section">
+        <div class="flex flex-col md:flex-row gap-6 md:gap-12 items-center justify-center w-full">
+            <button class="btn-chrome reveal-trigger" style="transition-delay: 0.1s;">
+                dadib_
+            </button>
+            <button class="btn-chrome reveal-trigger" style="transition-delay: 0.3s;">
+                adib.ahsan
+            </button>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer id="main-footer">
+        <div class="footer-text reveal-trigger">
+            Adib Ahsan. Contact: <a href="mailto:hello@adibahsan.com" class="footer-link">hello@adibahsan.com</a>
+        </div>
+    </footer>
+
+    <script>
+        // --- Lenis Initialization ---
+        const lenis = new Lenis({
+            duration: 1.6,
+            lerp: 0.07,
+            smoothWheel: true,
+        });
+
+        function raf(time) {
+            lenis.raf(time);
+            requestAnimationFrame(raf);
+        }
+        requestAnimationFrame(raf);
+
+        // --- Starfield Logic ---
+        const canvas = document.getElementById('starfield');
+        const ctx = canvas.getContext('2d');
+        let stars = [];
+        let currentScroll = 0;
+        let dpr = window.devicePixelRatio || 1;
+        let globalAlpha = 0;
+
+        function resize() {
+            canvas.width = window.innerWidth * dpr;
+            canvas.height = window.innerHeight * dpr;
+            ctx.scale(dpr, dpr);
+            const starCount = window.innerWidth < 768 ? 120 : 200;
+            initStars(starCount);
+        }
+
+        class Star {
+            constructor() {
+                this.x = Math.random() * window.innerWidth;
+                this.y = Math.random() * window.innerHeight;
+                this.size = Math.random() * 1.1 + 0.1;
+                this.vx = (Math.random() - 0.5) * 0.12;
+                this.vy = (Math.random() - 0.5) * 0.12;
+                this.baseOpacity = Math.random() * 0.4 + 0.1;
+                this.opacity = 0;
+                this.blinkSpeed = Math.random() * 0.008;
+                this.parallaxFactor = this.size * 0.04; 
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if (this.x < 0) this.x = window.innerWidth;
+                if (this.x > window.innerWidth) this.x = 0;
+                if (this.y < 0) this.y = window.innerHeight;
+                if (this.y > window.innerHeight) this.y = 0;
+
+                if (globalAlpha < 1) globalAlpha += 0.0001;
+                const pulse = Math.sin(Date.now() * this.blinkSpeed) * 0.003;
+                this.opacity = (this.baseOpacity + pulse) * globalAlpha;
+            }
+            draw() {
+                const py = this.y - (currentScroll * this.parallaxFactor);
+                let drawY = py % window.innerHeight;
+                if (drawY < 0) drawY += window.innerHeight;
+                ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0, this.opacity)})`;
+                ctx.beginPath();
+                ctx.arc(this.x, drawY, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function initStars(count) {
+            stars = [];
+            for (let i = 0; i < count; i++) {
+                stars.push(new Star());
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+            stars.forEach(star => {
+                star.update();
+                star.draw();
+            });
+            requestAnimationFrame(animate);
+        }
+
+        // --- Intersection Observer for Scroll Reveals ---
+        const observerOptions = {
+            threshold: 0.1
+        };
+
+        const revealObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('reveal');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.reveal-trigger').forEach(el => revealObserver.observe(el));
+
+        lenis.on('scroll', (e) => {
+            currentScroll = e.scroll;
+            const title = document.querySelector('.chrome-text');
+            if (title) {
+                title.style.transform = `translateY(${currentScroll * 0.15}px)`;
+                title.style.opacity = 1 - (currentScroll / (window.innerHeight * 0.8));
+            }
+        });
+
+        window.addEventListener('resize', resize);
+        
+        window.onload = () => {
+            document.fonts.ready.then(() => {
+                setTimeout(() => {
+                    document.body.classList.add('is-loaded');
+                    document.getElementById('preloader').classList.add('hidden');
+                    
+                    setTimeout(() => {
+                        document.body.classList.add('is-ready');
+                    }, 500);
+                }, 1200);
+            });
+            
+            resize();
+            animate();
+        };
+    </script>
+</body>
+</html>
