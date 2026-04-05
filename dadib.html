@@ -38,9 +38,9 @@
             -webkit-text-fill-color: transparent;
             background-size: 100% 200%;
             animation: shine 12s linear infinite;
-            letter-spacing: -0.02em; /* Increased slightly to prevent "dib" getting lost */
+            letter-spacing: -0.02em;
             display: inline-block;
-            padding-right: 0.05em; /* Prevents the 'b' from being cropped */
+            padding-right: 0.05em;
             padding-bottom: 0.05em;
         }
 
@@ -67,7 +67,7 @@
             margin-bottom: 25vh;
             opacity: 0;
             transform: translateY(80px);
-            transition: all 1.4s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: opacity 1.4s cubic-bezier(0.16, 1, 0.3, 1), transform 1.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .entry.visible {
@@ -96,13 +96,15 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
+            /* Default state is grayscale and dark */
             filter: grayscale(100%) contrast(110%) brightness(0.8);
-            transition: transform 2s cubic-bezier(0.16, 1, 0.3, 1), filter 1.5s ease;
+            transition: transform 2s cubic-bezier(0.16, 1, 0.3, 1);
+            will-change: filter, transform;
         }
 
+        /* Desktop Hover scale remains, but filter is now scroll-driven */
         .entry:hover img {
             transform: scale(1.04);
-            filter: grayscale(0%) contrast(100%) brightness(1);
         }
 
         .nav-link {
@@ -180,7 +182,7 @@
                         <span class="date-stamp">${item.date}</span>
                         <div class="image-container mb-10 ${item.layout === 'center' ? '' : 'aspect-[4/5]'}">
                             ${item.image 
-                                ? `<img src="${item.image}" alt="${item.title}" loading="lazy">` 
+                                ? `<img src="${item.image}" alt="${item.title}" class="scroll-image" loading="lazy">` 
                                 : `<div class="placeholder-box">No Data // ${item.date}</div>`
                             }
                         </div>
@@ -205,9 +207,43 @@
             document.querySelectorAll('.entry').forEach(el => observer.observe(el));
         }
 
+        // --- Scroll Driven Image Filters ---
+        function updateImageFilters() {
+            const images = document.querySelectorAll('.scroll-image');
+            const vh = window.innerHeight;
+            const center = vh / 2;
+
+            images.forEach(img => {
+                const rect = img.getBoundingClientRect();
+                const imgCenter = rect.top + (rect.height / 2);
+                
+                // Distance from viewport center
+                const distanceFromCenter = Math.abs(center - imgCenter);
+                
+                // Normalize: 0 at center, 1 at viewport edge
+                // We want color to be 100% when center, grayscale when far
+                // Range: grayscale(0%) at center, grayscale(100%) at 40% vh distance
+                const range = vh * 0.4;
+                let progress = Math.min(distanceFromCenter / range, 1);
+                
+                // Curve for more premium feel (ease in/out)
+                const easedProgress = Math.pow(progress, 2);
+                
+                const grayscale = easedProgress * 100;
+                const brightness = 1 - (easedProgress * 0.2); // 1.0 to 0.8
+                
+                img.style.filter = `grayscale(${grayscale}%) contrast(110%) brightness(${brightness})`;
+            });
+        }
+
         // --- Smooth Scroll (Lenis) ---
         const lenis = new Lenis({ duration: 1.8, lerp: 0.05 });
-        function raf(time) { lenis.raf(time); requestAnimationFrame(raf); }
+        function raf(time) { 
+            lenis.raf(time); 
+            updateImageFilters(); // Update color on every frame
+            animateStars();
+            requestAnimationFrame(raf); 
+        }
         requestAnimationFrame(raf);
 
         // --- Starfield Engine ---
@@ -243,7 +279,6 @@
                 ctx.fillStyle = `rgba(255,255,255,${s.opacity})`;
                 ctx.beginPath(); ctx.arc(s.x, drawY < 0 ? drawY + window.innerHeight : drawY, s.size, 0, Math.PI*2); ctx.fill();
             });
-            requestAnimationFrame(animateStars);
         }
 
         window.onload = () => {
@@ -256,7 +291,6 @@
                 }, 1000);
             });
             initStars();
-            animateStars();
         };
 
         window.addEventListener('resize', initStars);
