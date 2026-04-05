@@ -15,13 +15,19 @@
             --chrome: linear-gradient(180deg, #fff 0%, #a1a1aa 45%, #3f3f46 50%, #71717a 55%, #fff 100%);
         }
 
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             background-color: #020202;
             color: #ffffff;
             font-family: 'Coolvetica', sans-serif;
             margin: 0;
+            padding: 0;
             overflow-x: hidden;
             -webkit-tap-highlight-color: transparent;
+            width: 100%;
         }
 
         #starfield {
@@ -41,13 +47,14 @@
             letter-spacing: -0.02em;
             display: inline-block;
             padding-right: 0.05em;
-            padding-bottom: 0.05em;
+            padding-bottom: 0.1em;
+            word-break: keep-all;
         }
 
         .serif-sub {
             font-family: 'Bodoni Moda', serif;
             font-size: 0.65rem;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.15em;
             text-transform: none;
             color: rgba(255, 255, 255, 0.4);
             font-style: italic;
@@ -58,16 +65,18 @@
         .archive-grid {
             display: grid;
             grid-template-columns: repeat(12, 1fr);
-            gap: 2rem;
-            padding: 10vh 2rem;
+            gap: 1rem;
+            padding: 5vh 1.5rem;
+            width: 100%;
         }
 
         .entry {
             grid-column: span 12;
-            margin-bottom: 25vh;
+            margin-bottom: 15vh;
             opacity: 0;
-            transform: translateY(80px);
+            transform: translateY(40px);
             transition: opacity 1.4s cubic-bezier(0.16, 1, 0.3, 1), transform 1.4s cubic-bezier(0.16, 1, 0.3, 1);
+            width: 100%;
         }
 
         .entry.visible {
@@ -81,6 +90,7 @@
             border-radius: 2px;
             background: #0a0a0a;
             border: 1px solid rgba(255,255,255,0.05);
+            width: 100%;
         }
 
         .image-container::after {
@@ -96,24 +106,22 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            /* Default state is grayscale and dark */
             filter: grayscale(100%) contrast(110%) brightness(0.8);
             transition: transform 2s cubic-bezier(0.16, 1, 0.3, 1);
             will-change: filter, transform;
         }
 
-        /* Desktop Hover scale remains, but filter is now scroll-driven */
         .entry:hover img {
             transform: scale(1.04);
         }
 
         .nav-link {
             position: fixed;
-            top: 2.5rem;
-            left: 2.5rem;
+            top: 1.5rem;
+            left: 1.5rem;
             z-index: 100;
-            font-size: 0.7rem;
-            letter-spacing: 0.4em;
+            font-size: 0.65rem;
+            letter-spacing: 0.3em;
             text-transform: uppercase;
             color: rgba(255,255,255,0.3);
             text-decoration: none;
@@ -122,11 +130,11 @@
 
         .date-stamp {
             font-family: 'Bodoni Moda', serif;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             letter-spacing: 0.2em;
             text-transform: uppercase;
             color: rgba(255,255,255,0.2);
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
             display: block;
         }
 
@@ -136,11 +144,28 @@
             transition: opacity 2s ease;
         }
 
+        /* Mobile specific layouts (Overridden for desktop) */
+        @media (max-width: 767px) {
+            .entry {
+                text-align: center;
+            }
+            .entry p {
+                margin-left: auto;
+                margin-right: auto;
+            }
+        }
+
         @media (min-width: 768px) {
-            .layout-left { grid-column: 2 / span 5; }
-            .layout-right { grid-column: 7 / span 5; margin-top: 35vh; }
+            .archive-grid {
+                padding: 10vh 2rem;
+                gap: 2rem;
+            }
+            .layout-left { grid-column: 2 / span 5; text-align: left; }
+            .layout-right { grid-column: 7 / span 5; margin-top: 35vh; text-align: left; }
             .layout-center { grid-column: 4 / span 6; text-align: center; }
             .layout-center .image-container { aspect-ratio: 16/9; }
+            .entry { margin-bottom: 25vh; }
+            .nav-link { top: 2.5rem; left: 2.5rem; font-size: 0.7rem; }
         }
 
         .placeholder-box {
@@ -156,17 +181,18 @@
 
     <a href="index.html" class="nav-link">Index</a>
 
-    <header class="h-screen flex items-center justify-center">
-        <div class="text-center overflow-visible">
+    <header class="h-screen flex items-center justify-center px-4">
+        <div class="text-center overflow-visible w-full">
             <span class="serif-sub mb-4 block">Adib and Adib</span>
-            <h1 class="text-8xl md:text-[12rem] chrome-text font-normal leading-[0.9]">dadib</h1>
+            <!-- Fluid typography: 22vw on mobile, 12rem on desktop -->
+            <h1 class="text-[20vw] md:text-[12rem] chrome-text font-normal leading-[0.8] mb-0">dadib</h1>
         </div>
     </header>
 
     <main class="archive-grid" id="archive-content"></main>
 
     <footer class="py-60 text-center">
-        <p class="text-white/10 text-xs uppercase tracking-[0.5em]">End of Archive</p>
+        <p class="text-white/10 text-[0.6rem] uppercase tracking-[0.5em]">End of Archive</p>
     </footer>
 
     <script>
@@ -180,23 +206,23 @@
                 container.innerHTML = archiveData.map(item => `
                     <div class="entry layout-${item.layout}">
                         <span class="date-stamp">${item.date}</span>
-                        <div class="image-container mb-10 ${item.layout === 'center' ? '' : 'aspect-[4/5]'}">
+                        <div class="image-container mb-8 ${item.layout === 'center' ? '' : 'aspect-[4/5]'}">
                             ${item.image 
                                 ? `<img src="${item.image}" alt="${item.title}" class="scroll-image" loading="lazy">` 
                                 : `<div class="placeholder-box">No Data // ${item.date}</div>`
                             }
                         </div>
-                        <h2 class="${item.layout === 'center' ? 'text-4xl' : 'text-3xl'} font-light mb-6 italic text-white/90">
+                        <h2 class="${item.layout === 'center' ? 'text-3xl md:text-4xl' : 'text-2xl md:text-3xl'} font-light mb-4 italic text-white/90">
                             ${item.title}
                         </h2>
-                        ${item.description ? `<p class="text-white/30 font-light leading-relaxed max-w-xs ${item.layout === 'center' ? 'mx-auto' : ''}">${item.description}</p>` : ''}
+                        ${item.description ? `<p class="text-white/30 font-light text-sm md:text-base leading-relaxed max-w-xs">${item.description}</p>` : ''}
                     </div>
                 `).join('');
 
                 initObserver();
             } catch (error) {
                 console.error("Archive fetch error:", error);
-                document.getElementById('archive-content').innerHTML = `<p class="col-span-12 text-center text-white/20">Archive currently inaccessible.</p>`;
+                document.getElementById('archive-content').innerHTML = `<p class="col-span-12 text-center text-white/20">Archive inaccessible.</p>`;
             }
         }
 
@@ -216,31 +242,29 @@
             images.forEach(img => {
                 const rect = img.getBoundingClientRect();
                 const imgCenter = rect.top + (rect.height / 2);
-                
-                // Distance from viewport center
                 const distanceFromCenter = Math.abs(center - imgCenter);
-                
-                // Normalize: 0 at center, 1 at viewport edge
-                // We want color to be 100% when center, grayscale when far
-                // Range: grayscale(0%) at center, grayscale(100%) at 40% vh distance
-                const range = vh * 0.4;
+                const range = vh * 0.45;
                 let progress = Math.min(distanceFromCenter / range, 1);
-                
-                // Curve for more premium feel (ease in/out)
                 const easedProgress = Math.pow(progress, 2);
                 
                 const grayscale = easedProgress * 100;
-                const brightness = 1 - (easedProgress * 0.2); // 1.0 to 0.8
+                const brightness = 1 - (easedProgress * 0.25);
                 
                 img.style.filter = `grayscale(${grayscale}%) contrast(110%) brightness(${brightness})`;
             });
         }
 
         // --- Smooth Scroll (Lenis) ---
-        const lenis = new Lenis({ duration: 1.8, lerp: 0.05 });
+        const lenis = new Lenis({ 
+            duration: 1.8, 
+            lerp: 0.05,
+            smoothWheel: true,
+            touchMultiplier: 1.5 
+        });
+
         function raf(time) { 
             lenis.raf(time); 
-            updateImageFilters(); // Update color on every frame
+            updateImageFilters();
             animateStars();
             requestAnimationFrame(raf); 
         }
@@ -256,10 +280,11 @@
             canvas.width = window.innerWidth * dpr;
             canvas.height = window.innerHeight * dpr;
             ctx.scale(dpr, dpr);
-            stars = Array.from({length: 160}, () => ({
+            const starCount = window.innerWidth < 768 ? 100 : 160;
+            stars = Array.from({length: starCount}, () => ({
                 x: Math.random() * window.innerWidth,
                 y: Math.random() * window.innerHeight,
-                size: Math.random() * 1.3,
+                size: Math.random() * 1.2,
                 vx: (Math.random() - 0.5) * 0.07,
                 vy: (Math.random() - 0.5) * 0.07,
                 opacity: Math.random() * 0.5 + 0.1
@@ -287,8 +312,8 @@
             document.fonts.ready.then(() => {
                 setTimeout(() => {
                     document.getElementById('preloader').style.opacity = '0';
-                    setTimeout(() => document.getElementById('preloader').remove(), 2000);
-                }, 1000);
+                    setTimeout(() => document.getElementById('preloader').remove(), 1500);
+                }, 800);
             });
             initStars();
         };
