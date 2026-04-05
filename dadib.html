@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>dadib_</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.cdnfonts.com/css/coolvetica" rel="stylesheet">
+    <style>
+        :root {
+            --chrome: linear-gradient(180deg, #fff 0%, #a1a1aa 45%, #3f3f46 50%, #71717a 55%, #fff 100%);
+        }
+
+        body {
+            background-color: #020202;
+            color: #ffffff;
+            font-family: 'Coolvetica', sans-serif;
+            margin: 0;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #starfield {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0; pointer-events: none;
+        }
+
+        /* Typography */
+        .chrome-text {
+            font-family: 'Coolvetica', sans-serif;
+            background: var(--chrome);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-size: 100% 200%;
+            animation: shine 12s linear infinite;
+            letter-spacing: -0.02em; /* Increased slightly to prevent "dib" getting lost */
+            display: inline-block;
+            padding-right: 0.05em; /* Prevents the 'b' from being cropped */
+            padding-bottom: 0.05em;
+        }
+
+        .serif-sub {
+            font-family: 'Bodoni Moda', serif;
+            font-size: 0.65rem;
+            letter-spacing: 0.1em;
+            text-transform: none;
+            color: rgba(255, 255, 255, 0.4);
+            font-style: italic;
+        }
+
+        @keyframes shine { 0% { background-position: 0% 0%; } 100% { background-position: 0% 200%; } }
+
+        .archive-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 2rem;
+            padding: 10vh 2rem;
+        }
+
+        .entry {
+            grid-column: span 12;
+            margin-bottom: 25vh;
+            opacity: 0;
+            transform: translateY(80px);
+            transition: all 1.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .entry.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .image-container {
+            position: relative;
+            overflow: hidden;
+            border-radius: 2px;
+            background: #0a0a0a;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .image-container::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 50%, rgba(255,255,255,0.03) 100%);
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: grayscale(100%) contrast(110%) brightness(0.8);
+            transition: transform 2s cubic-bezier(0.16, 1, 0.3, 1), filter 1.5s ease;
+        }
+
+        .entry:hover img {
+            transform: scale(1.04);
+            filter: grayscale(0%) contrast(100%) brightness(1);
+        }
+
+        .nav-link {
+            position: fixed;
+            top: 2.5rem;
+            left: 2.5rem;
+            z-index: 100;
+            font-size: 0.7rem;
+            letter-spacing: 0.4em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            mix-blend-mode: difference;
+        }
+
+        .date-stamp {
+            font-family: 'Bodoni Moda', serif;
+            font-size: 0.7rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.2);
+            margin-bottom: 1.5rem;
+            display: block;
+        }
+
+        #preloader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #020202; z-index: 9999;
+            transition: opacity 2s ease;
+        }
+
+        @media (min-width: 768px) {
+            .layout-left { grid-column: 2 / span 5; }
+            .layout-right { grid-column: 7 / span 5; margin-top: 35vh; }
+            .layout-center { grid-column: 4 / span 6; text-align: center; }
+            .layout-center .image-container { aspect-ratio: 16/9; }
+        }
+
+        .placeholder-box {
+            width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+            background: #0a0a0a; color: rgba(255,255,255,0.05); font-style: italic; font-size: 0.7rem;
+        }
+    </style>
+</head>
+<body class="opacity-0 transition-opacity duration-1000">
+
+    <div id="preloader"></div>
+    <canvas id="starfield"></canvas>
+
+    <a href="index.html" class="nav-link">Index</a>
+
+    <header class="h-screen flex items-center justify-center">
+        <div class="text-center overflow-visible">
+            <span class="serif-sub mb-4 block">Adib and Adib</span>
+            <h1 class="text-8xl md:text-[12rem] chrome-text font-normal leading-[0.9]">dadib</h1>
+        </div>
+    </header>
+
+    <main class="archive-grid" id="archive-content"></main>
+
+    <footer class="py-60 text-center">
+        <p class="text-white/10 text-xs uppercase tracking-[0.5em]">End of Archive</p>
+    </footer>
+
+    <script>
+        // --- Content Loader ---
+        async function loadArchive() {
+            try {
+                const response = await fetch('archive.json');
+                const archiveData = await response.json();
+                
+                const container = document.getElementById('archive-content');
+                container.innerHTML = archiveData.map(item => `
+                    <div class="entry layout-${item.layout}">
+                        <span class="date-stamp">${item.date}</span>
+                        <div class="image-container mb-10 ${item.layout === 'center' ? '' : 'aspect-[4/5]'}">
+                            ${item.image 
+                                ? `<img src="${item.image}" alt="${item.title}" loading="lazy">` 
+                                : `<div class="placeholder-box">No Data // ${item.date}</div>`
+                            }
+                        </div>
+                        <h2 class="${item.layout === 'center' ? 'text-4xl' : 'text-3xl'} font-light mb-6 italic text-white/90">
+                            ${item.title}
+                        </h2>
+                        ${item.description ? `<p class="text-white/30 font-light leading-relaxed max-w-xs ${item.layout === 'center' ? 'mx-auto' : ''}">${item.description}</p>` : ''}
+                    </div>
+                `).join('');
+
+                initObserver();
+            } catch (error) {
+                console.error("Archive fetch error:", error);
+                document.getElementById('archive-content').innerHTML = `<p class="col-span-12 text-center text-white/20">Archive currently inaccessible.</p>`;
+            }
+        }
+
+        function initObserver() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); });
+            }, { threshold: 0.1 });
+            document.querySelectorAll('.entry').forEach(el => observer.observe(el));
+        }
+
+        // --- Smooth Scroll (Lenis) ---
+        const lenis = new Lenis({ duration: 1.8, lerp: 0.05 });
+        function raf(time) { lenis.raf(time); requestAnimationFrame(raf); }
+        requestAnimationFrame(raf);
+
+        // --- Starfield Engine ---
+        const canvas = document.getElementById('starfield');
+        const ctx = canvas.getContext('2d');
+        let stars = [];
+        let dpr = window.devicePixelRatio || 1;
+
+        function initStars() {
+            canvas.width = window.innerWidth * dpr;
+            canvas.height = window.innerHeight * dpr;
+            ctx.scale(dpr, dpr);
+            stars = Array.from({length: 160}, () => ({
+                x: Math.random() * window.innerWidth,
+                y: Math.random() * window.innerHeight,
+                size: Math.random() * 1.3,
+                vx: (Math.random() - 0.5) * 0.07,
+                vy: (Math.random() - 0.5) * 0.07,
+                opacity: Math.random() * 0.5 + 0.1
+            }));
+        }
+
+        function animateStars() {
+            ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+            const scroll = window.pageYOffset;
+            stars.forEach(s => {
+                s.x += s.vx; s.y += s.vy;
+                if (s.x < 0) s.x = window.innerWidth;
+                if (s.x > window.innerWidth) s.x = 0;
+                if (s.y < 0) s.y = window.innerHeight;
+                if (s.y > window.innerHeight) s.y = 0;
+                const drawY = (s.y - scroll * (s.size * 0.04)) % window.innerHeight;
+                ctx.fillStyle = `rgba(255,255,255,${s.opacity})`;
+                ctx.beginPath(); ctx.arc(s.x, drawY < 0 ? drawY + window.innerHeight : drawY, s.size, 0, Math.PI*2); ctx.fill();
+            });
+            requestAnimationFrame(animateStars);
+        }
+
+        window.onload = () => {
+            loadArchive(); 
+            document.body.classList.add('opacity-100');
+            document.fonts.ready.then(() => {
+                setTimeout(() => {
+                    document.getElementById('preloader').style.opacity = '0';
+                    setTimeout(() => document.getElementById('preloader').remove(), 2000);
+                }, 1000);
+            });
+            initStars();
+            animateStars();
+        };
+
+        window.addEventListener('resize', initStars);
+    </script>
+</body>
+</html>
