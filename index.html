@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Adib Ahsan</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lenis Smooth Scroll -->
@@ -85,12 +85,15 @@
             height: 100%;
             z-index: 0;
             pointer-events: none;
+            will-change: transform;
+            transform: translateZ(0);
         }
 
         /* Chromecore Text Effect */
         .chrome-text {
             background: var(--chrome-gradient);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
             background-size: 100% 200%;
             animation: shine 8s linear infinite;
@@ -341,11 +344,14 @@
         let globalAlpha = 0;
 
         function resize() {
+            dpr = window.devicePixelRatio || 1;
             canvas.width = window.innerWidth * dpr;
             canvas.height = window.innerHeight * dpr;
             ctx.scale(dpr, dpr);
-            const starCount = window.innerWidth < 768 ? 80 : 180;
-            initStars(starCount);
+            if (stars.length === 0) {
+                const starCount = window.innerWidth < 768 ? 80 : 180;
+                initStars(starCount);
+            }
         }
 
         class Star {
@@ -391,6 +397,10 @@
         }
 
         function animate() {
+            if (document.hidden) {
+                requestAnimationFrame(animate);
+                return;
+            }
             ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
             stars.forEach(star => {
                 star.update();
@@ -415,11 +425,11 @@
         document.querySelectorAll('.reveal-trigger').forEach(el => revealObserver.observe(el));
 
         lenis.on('scroll', (e) => {
-            currentScroll = e.scroll;
+            currentScroll = e.scroll || window.scrollY;
             const title = document.querySelector('.chrome-text');
             if (title) {
                 title.style.transform = `translateY(${currentScroll * 0.15}px)`;
-                title.style.opacity = 1 - (currentScroll / (window.innerHeight * 0.8));
+                title.style.opacity = Math.max(0, 1 - (currentScroll / (window.innerHeight * 0.8)));
             }
         });
 

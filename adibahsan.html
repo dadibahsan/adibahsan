@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Adib Ahsan // Portfolio</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
@@ -29,12 +29,15 @@
             top: 0; left: 0; width: 100%; height: 100%;
             z-index: 0; pointer-events: none;
             opacity: 0.3;
+            will-change: transform;
+            transform: translateZ(0);
         }
 
         .chrome-text {
             font-family: 'Coolvetica', sans-serif;
             background: var(--chrome);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
             background-size: 100% 200%;
             animation: shine 15s linear infinite;
@@ -98,9 +101,11 @@
             transition: all 1.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        .project-card:hover .img-reveal img {
-            transform: scale(1.03);
-            filter: brightness(1) grayscale(0);
+        @media (hover: hover) {
+            .project-card:hover .img-reveal img {
+                transform: scale(1.03);
+                filter: brightness(1) grayscale(0);
+            }
         }
 
         .project-meta {
@@ -131,7 +136,7 @@
             transition: color 0.4s;
         }
 
-        .nav-fixed a:hover { color: #fff; }
+        @media (hover: hover) { .nav-fixed a:hover { color: #fff; } }
 
         .line-divider {
             width: 100%;
@@ -156,12 +161,14 @@
             -webkit-backdrop-filter: blur(10px);
         }
 
-        .btn-all-works:hover {
-            border-color: rgba(255,255,255,0.4);
-            color: #fff;
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: 0 30px 60px rgba(0,0,0,0.5);
-            background: rgba(255,255,255,0.05);
+        @media (hover: hover) {
+            .btn-all-works:hover {
+                border-color: rgba(255,255,255,0.4);
+                color: #fff;
+                transform: translateY(-8px) scale(1.02);
+                box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+                background: rgba(255,255,255,0.05);
+            }
         }
 
         #preloader {
@@ -218,7 +225,7 @@
     <!-- Hero Section -->
     <section class="relative min-h-screen flex flex-col justify-end px-6 md:px-20 pb-24 overflow-hidden">
         <!-- Portrait Positioned in the void -->
-        <img src="1.png" alt="Adib Ahsan" class="hero-portrait" id="portrait-img">
+        <img src="https://i.ibb.co.com/NXMHYfd/hero-cover-port.png" alt="Adib Ahsan" class="hero-portrait" id="portrait-img" decoding="async">
         
         <div class="max-w-screen-2xl w-full relative z-10 mx-auto">
             <div class="mb-8">
@@ -308,7 +315,7 @@
             list.innerHTML = projects.map(p => `
                 <div class="project-card">
                     <div class="img-reveal">
-                        <img src="${p.image}" alt="${p.title}" loading="lazy">
+                        <img src="${p.image}" alt="${p.title}" loading="lazy" decoding="async">
                     </div>
                     <div class="project-meta">
                         <div>
@@ -362,21 +369,29 @@
         let stars = [];
         let dpr = window.devicePixelRatio || 1;
 
-        function initStars() {
+        function resizeCanvas() {
+            dpr = window.devicePixelRatio || 1;
             canvas.width = window.innerWidth * dpr;
             canvas.height = window.innerHeight * dpr;
             ctx.scale(dpr, dpr);
-            stars = Array.from({length: 80}, () => ({
-                x: Math.random() * window.innerWidth,
-                y: Math.random() * window.innerHeight,
-                size: Math.random() * 0.8,
-                vx: (Math.random() - 0.5) * 0.04,
-                vy: (Math.random() - 0.5) * 0.04,
-                opacity: Math.random() * 0.25
-            }));
+        }
+
+        function initStars() {
+            resizeCanvas();
+            if (stars.length === 0) {
+                stars = Array.from({length: 80}, () => ({
+                    x: Math.random() * window.innerWidth,
+                    y: Math.random() * window.innerHeight,
+                    size: Math.random() * 0.8,
+                    vx: (Math.random() - 0.5) * 0.04,
+                    vy: (Math.random() - 0.5) * 0.04,
+                    opacity: Math.random() * 0.25
+                }));
+            }
         }
 
         function animateStars() {
+            if (document.hidden) return;
             ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
             const scroll = window.pageYOffset;
             stars.forEach(s => {
@@ -393,6 +408,7 @@
 
         window.onload = () => {
             renderProjects();
+            document.body.classList.remove('opacity-0');
             document.body.classList.add('opacity-100');
             setTimeout(() => {
                 document.getElementById('preloader').style.opacity = '0';
@@ -401,7 +417,15 @@
             }, 800);
             initStars();
         };
-        window.addEventListener('resize', initStars);
+        let lastWidth = window.innerWidth;
+        window.addEventListener('resize', () => {
+            if (window.innerWidth !== lastWidth) {
+                lastWidth = window.innerWidth;
+                resizeCanvas();
+            } else {
+                resizeCanvas();
+            }
+        });
     </script>
 </body>
 </html>

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>dadib_</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
@@ -34,6 +34,8 @@
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             z-index: 0; pointer-events: none;
+            will-change: transform;
+            transform: translateZ(0);
         }
 
         /* Typography */
@@ -41,6 +43,7 @@
             font-family: 'Coolvetica', sans-serif;
             background: var(--chrome);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
             background-size: 100% 200%;
             animation: shine 12s linear infinite;
@@ -111,8 +114,10 @@
             will-change: filter, transform;
         }
 
-        .entry:hover img {
-            transform: scale(1.04);
+        @media (hover: hover) {
+            .entry:hover img {
+                transform: scale(1.04);
+            }
         }
 
         .nav-link {
@@ -208,7 +213,7 @@
                         <span class="date-stamp">${item.date}</span>
                         <div class="image-container mb-8 ${item.layout === 'center' ? '' : 'aspect-[4/5]'}">
                             ${item.image 
-                                ? `<img src="${item.image}" alt="${item.title}" class="scroll-image" loading="lazy">` 
+                                ? `<img src="${item.image}" alt="${item.title}" class="scroll-image" loading="lazy" decoding="async">` 
                                 : `<div class="placeholder-box">No Data // ${item.date}</div>`
                             }
                         </div>
@@ -220,6 +225,8 @@
                 `).join('');
 
                 initObserver();
+                cachedImages = document.querySelectorAll('.scroll-image');
+                requestAnimationFrame(updateImageFilters);
             } catch (error) {
                 console.error("Archive fetch error:", error);
                 document.getElementById('archive-content').innerHTML = `<p class="col-span-12 text-center text-white/20">Archive inaccessible.</p>`;
@@ -234,12 +241,13 @@
         }
 
         // --- Scroll Driven Image Filters ---
+        let cachedImages = [];
         function updateImageFilters() {
-            const images = document.querySelectorAll('.scroll-image');
+            if (!cachedImages || cachedImages.length === 0) return;
             const vh = window.innerHeight;
             const center = vh / 2;
 
-            images.forEach(img => {
+            cachedImages.forEach(img => {
                 const rect = img.getBoundingClientRect();
                 const imgCenter = rect.top + (rect.height / 2);
                 const distanceFromCenter = Math.abs(center - imgCenter);
@@ -262,9 +270,12 @@
             touchMultiplier: 1.5 
         });
 
+        lenis.on('scroll', () => {
+            updateImageFilters();
+        });
+
         function raf(time) { 
             lenis.raf(time); 
-            updateImageFilters();
             animateStars();
             requestAnimationFrame(raf); 
         }
@@ -276,22 +287,30 @@
         let stars = [];
         let dpr = window.devicePixelRatio || 1;
 
-        function initStars() {
+        function resizeCanvas() {
+            dpr = window.devicePixelRatio || 1;
             canvas.width = window.innerWidth * dpr;
             canvas.height = window.innerHeight * dpr;
             ctx.scale(dpr, dpr);
-            const starCount = window.innerWidth < 768 ? 100 : 160;
-            stars = Array.from({length: starCount}, () => ({
-                x: Math.random() * window.innerWidth,
-                y: Math.random() * window.innerHeight,
-                size: Math.random() * 1.2,
-                vx: (Math.random() - 0.5) * 0.07,
-                vy: (Math.random() - 0.5) * 0.07,
-                opacity: Math.random() * 0.5 + 0.1
-            }));
+        }
+
+        function initStars() {
+            resizeCanvas();
+            if (stars.length === 0) {
+                const starCount = window.innerWidth < 768 ? 100 : 160;
+                stars = Array.from({length: starCount}, () => ({
+                    x: Math.random() * window.innerWidth,
+                    y: Math.random() * window.innerHeight,
+                    size: Math.random() * 1.2,
+                    vx: (Math.random() - 0.5) * 0.07,
+                    vy: (Math.random() - 0.5) * 0.07,
+                    opacity: Math.random() * 0.5 + 0.1
+                }));
+            }
         }
 
         function animateStars() {
+            if (document.hidden) return;
             ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
             const scroll = window.pageYOffset;
             stars.forEach(s => {
@@ -308,6 +327,7 @@
 
         window.onload = () => {
             loadArchive(); 
+            document.body.classList.remove('opacity-0');
             document.body.classList.add('opacity-100');
             document.fonts.ready.then(() => {
                 setTimeout(() => {
@@ -318,7 +338,15 @@
             initStars();
         };
 
-        window.addEventListener('resize', initStars);
+        let lastWidth = window.innerWidth;
+        window.addEventListener('resize', () => {
+            if (window.innerWidth !== lastWidth) {
+                lastWidth = window.innerWidth;
+                resizeCanvas();
+            } else {
+                resizeCanvas();
+            }
+        });
     </script>
 </body>
 </html>
