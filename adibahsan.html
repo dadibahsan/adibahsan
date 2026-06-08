@@ -62,7 +62,7 @@
             pointer-events: none;
             mask-image: linear-gradient(to top, transparent 0%, black 15%, black 85%, transparent 100%);
             -webkit-mask-image: linear-gradient(to top, transparent 0%, black 15%, black 85%, transparent 100%);
-            filter: grayscale(100%) contrast(110%) brightness(0.7);
+            filter: grayscale(0%) contrast(110%) brightness(1);
         }
 
         body.is-ready .hero-portrait {
@@ -189,14 +189,14 @@
             .hero-portrait {
                 display: block;
                 height: 45vh; /* Fixed height for mobile void */
-                top: 12vh;    /* Positions image in the upper marked area */
+                top: 15vh;    /* Positions image in the upper marked area */
                 bottom: auto;
-                left: 50%;
+                left: 65%;
                 right: auto;
                 transform: translate(-50%, 20px);
                 mask-image: radial-gradient(circle, black 40%, transparent 80%);
                 -webkit-mask-image: radial-gradient(circle, black 40%, transparent 80%);
-                filter: grayscale(100%) contrast(110%) brightness(0.6);
+                filter: grayscale(0%) contrast(110%) brightness(1.5);
             }
             body.is-ready .hero-portrait {
                 opacity: 0.5;
@@ -225,7 +225,7 @@
     <!-- Hero Section -->
     <section class="relative min-h-screen flex flex-col justify-end px-6 md:px-20 pb-24 overflow-hidden">
         <!-- Portrait Positioned in the void -->
-        <img src="https://i.ibb.co.com/NXMHYfd/hero-cover-port.png" alt="Adib Ahsan" class="hero-portrait" id="portrait-img" decoding="async">
+        <img src="hero-picture.png" alt="Adib Ahsan" class="hero-portrait" id="portrait-img" decoding="async">
         
         <div class="max-w-screen-2xl w-full relative z-10 mx-auto">
             <div class="mb-8">
