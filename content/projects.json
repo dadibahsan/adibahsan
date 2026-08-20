@@ -1,0 +1,46 @@
+[
+  {
+    "slug": "example-project-one",
+    "title": "Example Project Title",
+    "client": "Example Client",
+    "year": 2026,
+    "runtime": "4:12",
+    "language": "English",
+    "role": "Director, Animation, Edit",
+    "youtube": "dQw4w9WgXcQ",
+    "poster": "poster.jpg",
+    "featured": true,
+    "summary": "Two to four sentences describing the problem this piece had to solve. Not the software used — the constraint, the brief, the thing that made it hard.",
+    "technical": "One paragraph on how it was actually made. Pipeline, tools, the workaround you had to invent.",
+    "stills": [
+      { "file": "01.jpg", "alt": "Description of the first frame" },
+      { "file": "02.jpg", "alt": "Description of the second frame" },
+      { "file": "03.jpg", "alt": "Description of the third frame" }
+    ],
+    "credits": [
+      { "role": "Example role", "name": "Example Name" }
+    ],
+    "link": { "label": "Watch on Example Platform", "url": "https://example.com/" }
+  },
+  {
+    "slug": "example-project-two",
+    "title": "Another Example Title",
+    "client": "Personal",
+    "year": 2026,
+    "runtime": "1:30",
+    "language": "Silent",
+    "role": "Director, Edit",
+    "youtube": "aqz-KE-bpKQ",
+    "poster": "poster.jpg",
+    "featured": true,
+    "summary": "A second filler entry, fully populated, so the build has more than one project to exercise ordering, prev/next links and the work index.",
+    "technical": "A second paragraph of filler technical notes.",
+    "stills": [
+      { "file": "01.jpg", "alt": "Description of the first frame" },
+      { "file": "02.jpg", "alt": "Description of the second frame" }
+    ],
+    "credits": [
+      { "role": "Example role", "name": "Example Name" }
+    ]
+  }
+]

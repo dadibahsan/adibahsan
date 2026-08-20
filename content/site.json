@@ -1,0 +1,14 @@
+{
+  "name": "Adib Ahsan",
+  "role": "Creative",
+  "location": "Dhaka",
+  "tagline": "Motion · Film · Design",
+  "email": "hello@adibahsan.com",
+  "domain": "https://adibahsan.com",
+  "year": 2026,
+  "lang": "en",
+  "nav": ["work", "notes", "about", "contact"],
+  "elsewhere": [
+    { "label": "Instagram", "url": "https://www.instagram.com/adib.ahsan_/" }
+  ]
+}

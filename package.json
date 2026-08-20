@@ -1,0 +1,20 @@
+{
+  "name": "portfolio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Static portfolio site. See SPEC.md.",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node build.js",
+    "preview": "node build.js && node serve.js",
+    "deploy": "node build.js && git add -A && git commit -m \"Update site\" && git push"
+  },
+  "dependencies": {
+    "gray-matter": "^4.0.3",
+    "marked": "^12.0.2",
+    "sharp": "^0.33.5"
+  }
+}

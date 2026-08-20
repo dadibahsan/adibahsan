@@ -1,0 +1,58 @@
+/* site.css — the entire stylesheet for the site, in one file.
+   SPEC.md §10 is the design system this implements.
+
+   PHASE 1 (skeleton) — this file currently declares only the design tokens
+   and the handful of base rules needed for the homepage to be legible.
+   Phase 2 implements §10 in full: typography, the manifest rows, the
+   responsive breakpoint, links and focus states, print, motion.
+
+   Two rules that never change:
+   - Every colour on the site is one of the six tokens below. No others.
+   - Every margin and padding is one of --s1 .. --s10. No others. */
+
+:root {
+  /* Colour — SPEC.md §10.2. Six tokens, no more. */
+  --paper:      #EDEBE4;  /* background — bone, cool-neutral newsprint */
+  --ink:        #1A1917;  /* body text — near-black, faintly warm */
+  --ink-muted:  #6B6862;  /* metadata, labels, dates */
+  --rule:       #C9C5BB;  /* hairlines, 1px */
+  --mark:       #B0281F;  /* registration red */
+  --paper-lift: #F4F2EC;  /* image placeholder background only */
+
+  /* Type — SPEC.md §10.3. The two families are self-hosted in Phase 2;
+     until then the fallbacks below do the work. */
+  --serif: "SiteSerif", Charter, "Bitstream Charter", Georgia, serif;
+  --mono:  "SiteMono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Spacing — SPEC.md §10.4. */
+  --s1: 0.25rem;  --s2: 0.5rem;   --s3: 0.75rem;  --s4: 1rem;
+  --s5: 1.5rem;   --s6: 2rem;     --s7: 3rem;     --s8: 4rem;
+  --s9: 6rem;     --s10: 8rem;
+
+  /* Layout — SPEC.md §10.5. */
+  --w-text:  36rem;   /* the reading column, ~65 characters */
+  --w-media: 56rem;   /* video and stills */
+  --gutter:  1.5rem;
+}
+
+/* No border-radius anywhere on this site. SPEC.md §10.7. */
+* { border-radius: 0; }
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: var(--s6) var(--gutter) var(--s9);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+}
+
+/* The page container is centred at media width; text blocks inside it are
+   constrained to --w-text and align to the container's LEFT edge. */
+body > header,
+body > main,
+body > footer {
+  max-width: var(--w-media);
+  margin-inline: auto;
+}
