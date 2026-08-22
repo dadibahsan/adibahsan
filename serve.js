@@ -68,6 +68,38 @@ const server = http.createServer(function (request, response) {
     return;
   }
 
+  // A video player does not download a film in one go — it asks for small
+  // chunks as you watch and, crucially, when you drag the scrubber. That is a
+  // "range request". Cloudflare answers those properly when the site is live,
+  // so the preview does too; without it, dragging the scrubber on a large film
+  // would re-download the whole thing every time.
+  const range = request.headers.range;
+  if (range && fs.existsSync(target) && fs.statSync(target).isFile()) {
+    const total = fs.statSync(target).size;
+    const match = /^bytes=(\d*)-(\d*)$/.exec(range.trim());
+    if (match) {
+      let start = match[1] === '' ? total - Number(match[2]) : Number(match[1]);
+      let end = match[1] === '' || match[2] === '' ? total - 1 : Number(match[2]);
+      if (!Number.isFinite(start) || start < 0) start = 0;
+      if (!Number.isFinite(end) || end > total - 1) end = total - 1;
+
+      if (start > end) {
+        response.writeHead(416, { 'Content-Range': 'bytes */' + total }).end();
+        return;
+      }
+
+      response.writeHead(206, {
+        'Content-Type': TYPES[path.extname(target).toLowerCase()] || 'application/octet-stream',
+        'Content-Range': 'bytes ' + start + '-' + end + '/' + total,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': end - start + 1,
+        'Cache-Control': 'no-store',
+      });
+      fs.createReadStream(target, { start: start, end: end }).pipe(response);
+      return;
+    }
+  }
+
   fs.readFile(target, function (err, data) {
     if (err) {
       // Not found: show the site's own 404 page if it has been built yet.
@@ -86,7 +118,11 @@ const server = http.createServer(function (request, response) {
 
     const type = TYPES[path.extname(target).toLowerCase()] || 'application/octet-stream';
     // Never cache during preview, so a rebuild always shows up on refresh.
-    response.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-store' });
+    response.writeHead(200, {
+      'Content-Type': type,
+      'Cache-Control': 'no-store',
+      'Accept-Ranges': 'bytes',
+    });
     response.end(data);
   });
 });

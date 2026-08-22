@@ -269,7 +269,8 @@ An array of project objects, in the order they should appear. **Order in the fil
 | `runtime` | string | ✅ | `M:SS` or `MM:SS`. Rendered as timecode. Use `"—"` for stills-only projects. |
 | `language` | string | ✅ | e.g. `"English"`, `"Silent"`. |
 | `role` | string | ✅ | Comma-separated: `"Director, Animation, Edit"`. |
-| `youtube` | string \| null | ✅ | The 11-character video ID **only** — not a URL. `null` if there's no video. |
+| `youtube` | string \| null | ✅ | The 11-character video ID **only** — not a URL. `null` if there's no video. May be omitted entirely when `video` is used. |
+| `video` | string | ➖ | Self-host the film instead of using YouTube. See below. |
 | `poster` | string | ✅ | Filename inside `media/<slug>/`. Usually `"poster.jpg"`. |
 | `summary` | string | ✅ | 2–4 sentences. Markdown allowed. **Write about the problem, not the process.** |
 | `technical` | string | ➖ | One paragraph. Pipeline, constraint, what was hard. Markdown allowed. Omit if there's nothing real to say. |
@@ -278,6 +279,35 @@ An array of project objects, in the order they should appear. **Order in the fil
 | `credits` | array | ➖ | `[{ "role": "Sound", "name": "Someone" }]` |
 | `link` | object | ➖ | `{ "label": "Watch on ...", "url": "https://..." }` |
 | `draft` | boolean | ➖ | `true` = excluded from the build entirely. Use for work in progress. |
+
+#### `video` — self-hosting a film (§23.4)
+
+For a piece that cannot live on YouTube: a music copyright claim, or a client who will not have it there.
+
+Put the file in `media/<slug>/` and name it in the entry:
+
+```json
+{
+  "slug": "athar",
+  "video": "athar.mp4",
+  "poster": "poster.jpg"
+}
+```
+
+The page then renders a normal `<video>` player with the browser's own controls, instead of the YouTube facade. Nothing downloads until the visitor presses play, so a page with a self-hosted film costs the same to open as any other.
+
+| Rule | Detail |
+|---|---|
+| Formats | `.mp4` (use this), `.webm`, `.mov`. Anything else is an error. |
+| Mutually exclusive with `youtube` | A project uses one or the other. Setting both is an error. When `video` is set, `youtube` may be left out entirely. |
+| Missing file | Build fails with the filename and a list of what *is* in the folder. |
+| **Size limit** | **Cloudflare refuses to serve any single file over 25 MiB.** The build warns above 24 MB. Over the limit, the film simply will not play once published. |
+| Poster | Required, as for any project. It is what the player shows before play, and what a shared link previews with. |
+| Filenames | Spaces are handled correctly, but lowercase-and-hyphens is still easier to live with. |
+
+The file is copied to `dist/m/<slug>/` untouched — no re-encoding. What you export is what gets served, so export sensibly: 1080p, H.264, AAC audio, and a bitrate that keeps the whole file under 24 MB. A four-minute film inside that budget means roughly 700 kbps, which is modest — **for anything longer than about two minutes, YouTube will look better.** Self-hosting is the exception, not the default.
+
+Keep total self-hosted media under ~200 MB across the whole repository.
 
 #### `stills` accepts two forms
 

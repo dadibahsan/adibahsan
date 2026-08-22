@@ -34,7 +34,14 @@ function metadata(project) {
 // real player is only fetched if a visitor actually presses play, which
 // src/video.js handles. With JavaScript switched off, the <noscript> link
 // still takes them to the video.
-function video(project, posterRecord) {
+function video(project, posterRecord, videoFile) {
+  // A self-hosted film, served from this site rather than YouTube. SPEC.md
+  // §23.4. Used when a piece is blocked on YouTube — a music claim, or a
+  // client who will not have it there. Nothing is fetched until the visitor
+  // presses play, because preload is "none": before that the browser has only
+  // the poster, exactly like the YouTube facade beside it.
+  if (videoFile) return selfHosted(project, posterRecord, videoFile);
+
   // No video on this project: show the poster on its own, with no play button.
   if (!project.youtube) {
     if (!posterRecord) return '';
@@ -54,6 +61,42 @@ function video(project, posterRecord) {
     '<noscript>',
     '<a href="https://www.youtube.com/watch?v=' + id + '">Watch on YouTube</a>',
     '</noscript>',
+    '</figure>',
+  ].join('');
+}
+
+// The poster frame as a plain URL, for the <video poster> attribute, which
+// takes a single image rather than a responsive set. The 1200px version is
+// the same one used for link previews.
+function posterUrl(record) {
+  if (!record) return '';
+  const pick = record.outputs.filter(function (o) { return o.width <= 1200; }).pop() || record.outputs[0];
+  return '/m/' + pick.file;
+}
+
+// A native <video>. The browser's own controls are used rather than a custom
+// set: they are already keyboard accessible, already translated, and already
+// familiar. SPEC.md §23.4.
+function selfHosted(project, posterRecord, videoFile) {
+  // width and height are given so the browser reserves the right shape before
+  // anything loads and the page never jumps. They come from the poster, which
+  // is the only measurement available at build time.
+  const width = posterRecord ? posterRecord.outputs[posterRecord.outputs.length - 1].width : 1600;
+  const height = posterRecord
+    ? Math.round(width * posterRecord.height / posterRecord.width)
+    : 900;
+
+  const poster = posterUrl(posterRecord);
+
+  return [
+    '<figure class="v v-file">',
+    '<video controls playsinline preload="none"',
+    poster ? ' poster="' + escapeHtml(poster) + '"' : '',
+    ' width="' + width + '" height="' + height + '">',
+    '<source src="' + escapeHtml(videoFile.url) + '" type="' + escapeHtml(videoFile.type) + '">',
+    // Shown only by a browser that cannot play the file at all.
+    '<p class="v-fallback"><a href="' + escapeHtml(videoFile.url) + '">Download the film</a></p>',
+    '</video>',
     '</figure>',
   ].join('');
 }
@@ -127,7 +170,7 @@ function isoDuration(runtime) {
  */
 function structuredData(site, entry) {
   const p = entry.project;
-  if (!p.youtube) return '';
+  if (!p.youtube && !entry.video) return '';
 
   const data = {
     '@context': 'https://schema.org',
@@ -137,8 +180,15 @@ function structuredData(site, entry) {
     // projects.json records a year, not a full date, so the first of that year
     // stands in for it. Search engines only need it to be a valid date.
     uploadDate: p.year + '-01-01',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/' + p.youtube,
   };
+
+  // A YouTube piece is embedded; a self-hosted one is a file served from this
+  // site. Search engines want a different property for each. SPEC.md §14.2.
+  if (p.youtube) {
+    data.embedUrl = 'https://www.youtube-nocookie.com/embed/' + p.youtube;
+  } else if (entry.video) {
+    data.contentUrl = site.domain + entry.video.url;
+  }
 
   if (entry.ogImage) data.thumbnailUrl = site.domain + entry.ogImage;
 
@@ -167,7 +217,7 @@ function project(site, entry) {
     metadata(p),
 
     // 3. video, or the poster on its own
-    video(p, entry.poster),
+    video(p, entry.poster, entry.video),
 
     // 4. summary
     '<div class="prose">' + entry.summaryHtml + '</div>',

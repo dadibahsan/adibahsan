@@ -192,6 +192,16 @@ const YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/;
 // A runtime is "4:12" or "12:30" — minutes, a colon, two digits of seconds.
 const RUNTIME = /^\d{1,3}:[0-5]\d$/;
 
+// Formats a browser can play from a plain file. MP4 is the safe choice.
+// SPEC.md §7.2, §23.4.
+const VIDEO_FILE = /\.(mp4|webm|mov)$/i;
+
+const VIDEO_TYPES = {
+  '.mp4': 'video/mp4',
+  '.webm': 'video/webm',
+  '.mov': 'video/quicktime',
+};
+
 function loadProjects() {
   const projects = readJson(path.join(CONTENT, 'projects.json'), 'projects.json');
   if (!projects) return [];
@@ -219,7 +229,13 @@ function loadProjects() {
 
     // "youtube" is required but is allowed to be null, so it is checked apart
     // from the others (a missing key is an error; a null value is fine).
-    if (!('youtube' in project)) {
+    //
+    // A project carrying a self-hosted "video" is the exception: there is no
+    // YouTube ID to give, so the field can simply be left out rather than
+    // written as null. SPEC.md §7.2.
+    if (!('youtube' in project) && project.video) {
+      // nothing to check — the film is served from this site
+    } else if (!('youtube' in project)) {
       errors.push('✗ ' + at + ' missing required field "youtube". Give the 11-character video ID, or null if there is no video.');
     } else if (project.youtube !== null) {
       if (typeof project.youtube !== 'string' || !YOUTUBE_ID.test(project.youtube)) {
@@ -257,7 +273,19 @@ function loadProjects() {
       errors.push('✗ ' + entry + ' "runtime" must look like "4:12" or "12:30", or "—" if there is no video. You gave "' + project.runtime + '".');
     }
 
-    // -- the media folder, the poster, and the stills --
+    // -- video: an optional self-hosted film, instead of YouTube. §7.2, §23.4 --
+    if (project.video !== undefined && project.video !== null && project.video !== '') {
+      if (typeof project.video !== 'string') {
+        errors.push('✗ ' + entry + ' "video" must be a filename inside media/' + project.slug + '/, e.g. "film.mp4".');
+      } else if (project.youtube) {
+        errors.push('✗ ' + entry + ' has both "youtube" and "video" set. A project can use one or the other, not both. ' +
+          'To use the self-hosted file, set "youtube": null. To use YouTube, remove "video".');
+      } else if (!VIDEO_FILE.test(project.video)) {
+        errors.push('✗ ' + entry + ' video "' + project.video + '" is not a supported format. Use .mp4 (best), .webm, or .mov.');
+      }
+    }
+
+    // -- the media folder, the poster, the video, and the stills --
     if (typeof project.slug === 'string' && project.slug !== '') {
       const folder = path.join(MEDIA, project.slug);
 
@@ -266,6 +294,22 @@ function loadProjects() {
       } else {
         if (project.poster && !exists(path.join(folder, project.poster))) {
           errors.push('✗ ' + entry + ' poster "' + project.poster + '" not found in media/' + project.slug + '/. Files present: ' + listFolder(folder));
+        }
+
+        if (typeof project.video === 'string' && project.video !== '') {
+          const videoPath = path.join(folder, project.video);
+          if (!exists(videoPath)) {
+            errors.push('✗ ' + entry + ' video "' + project.video + '" not found in media/' + project.slug + '/. Files present: ' + listFolder(folder));
+          } else {
+            // Cloudflare Pages refuses to serve any single file over 25 MiB, so
+            // warn well before that. SPEC.md §23.4.
+            const megabytes = fs.statSync(videoPath).size / (1024 * 1024);
+            if (megabytes > 24) {
+              warnings.push('⚠ Entry "' + project.slug + '": video "' + project.video + '" is ' + megabytes.toFixed(1) +
+                ' MB. Cloudflare refuses to serve anything over 25 MB, so this will not play once published. ' +
+                'Export it smaller, or put it on YouTube instead.');
+            }
+          }
         }
 
         // Stills may be written as plain filenames or as {file, alt} objects.
@@ -281,7 +325,7 @@ function loadProjects() {
     if (typeof project.summary === 'string' && project.summary.length > 400) {
       warnings.push('⚠ Entry "' + project.slug + '": summary is ' + project.summary.length + ' characters. Under 400 reads better.');
     }
-    if (project.youtube === null && normaliseStills(project).length === 0) {
+    if (!project.youtube && !project.video && normaliseStills(project).length === 0) {
       warnings.push('⚠ Entry "' + project.slug + '": no video and no stills, so the page will be text only.');
     }
     normaliseStills(project).forEach(function (still) {
@@ -820,6 +864,25 @@ async function build() {
     publishImage(record, written);
   }
 
+  // Self-hosted films are copied across untouched — no resizing, no re-encoding.
+  // The file you exported is the file that gets served. Only projects that are
+  // actually published reach this loop, so a draft's film stays private in the
+  // same way its stills do. SPEC.md §23.4.
+  const videos = {};
+  projects.forEach(function (project) {
+    if (!project.video) return;
+    const relative = project.slug + '/' + project.video;
+    const from = path.join(MEDIA, project.slug, project.video);
+    writeFile(path.join('m', project.slug, project.video), fs.readFileSync(from));
+    videos[relative] = {
+      // The filename is percent-encoded for the address bar — a film called
+      // "Yacine Athar Series.mp4" has spaces in it, and a raw space in a URL
+      // is not valid. The file on disk keeps its real name.
+      url: '/m/' + encodeURIComponent(project.slug) + '/' + encodeURIComponent(project.video),
+      type: VIDEO_TYPES[path.extname(project.video).toLowerCase()] || 'video/mp4',
+    };
+  });
+
   // Tell the owner what was left out, so a folder never sits there being
   // silently ignored when they expected it to appear.
   Array.from(skippedFolders).sort().forEach(function (folder) {
@@ -877,6 +940,7 @@ async function build() {
     writePage(projectPage(site, {
       project: item,
       poster: posterRecord,
+      video: item.video ? videos[item.slug + '/' + item.video] : null,
       stills: normaliseStills(item).map(function (still) {
         return { alt: still.alt, record: images[item.slug + '/stills/' + still.file] };
       }).filter(function (still) { return still.record; }),
