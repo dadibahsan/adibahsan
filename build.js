@@ -1,9 +1,8 @@
 /* build.js — the generator.
  *
  * WHAT THIS DOES, IN ONE SENTENCE
- * It reads your content (content/*.json and, later, your markdown files),
- * pours it into the templates in src/templates/, and writes finished HTML
- * files into a folder called dist/. That folder is the website.
+ * It reads your content (content/ and media/), pours it into the templates in
+ * src/templates/, and writes a finished website into a folder called dist/.
  *
  * HOW TO RUN IT
  *   npm run build     — just generate dist/
@@ -12,10 +11,15 @@
  * You never edit anything in dist/. It is deleted and rewritten every time
  * this script runs. To change a page, change the content or the template.
  *
- * PHASE 1 OF SPEC.md §20 — this version does the skeleton only:
- *   reads site.json and projects.json, and writes a single dist/index.html.
- * Image processing, markdown, the other page types, the video facade and the
- * feeds all arrive in later phases. Where that is the case, the code says so.
+ * IF THE BUILD FAILS
+ * It prints every problem it found, in plain English, and writes nothing at
+ * all. A broken build can therefore never take the live site down.
+ *
+ * PHASE 3 OF SPEC.md §20 — this version does:
+ *   loading and full validation (§8.4), image resizing with a cache (§8.3),
+ *   markdown for notes and pages, and the homepage.
+ * The remaining page types (§9.2-§9.8), the video facade and the feeds arrive
+ * in Phases 4-6. Where that is the case, the code says so.
  *
  * A NOTE ON THE COMMENTS
  * They are written for someone who does not know JavaScript. If a line looks
@@ -24,38 +28,89 @@
 
 'use strict';
 
-// Node's own tools for working with files and folder paths. Nothing installed,
-// nothing third-party — these ship with Node itself.
+// Node's own tools for working with files and folder paths. These ship with
+// Node itself — nothing to install.
 const fs = require('fs');
 const path = require('path');
 
-// Our own templates.
-const { layout } = require('./src/templates/layout.js');
-const { home } = require('./src/templates/home.js');
+// The three installed packages, and no others. SPEC.md §5.2.
+const sharp = require('sharp');          // resizes images and writes WebP
+const { marked } = require('marked');    // turns markdown into HTML
+const matter = require('gray-matter');   // reads the front matter block
 
-// Where everything lives. Every other path in this file is built from these,
-// so the script works no matter which folder you run it from.
+// Our own templates.
+const { layout, image } = require('./src/templates/layout.js');
+const { home } = require('./src/templates/home.js');
+const { workIndex } = require('./src/templates/work-index.js');
+const { project: projectPage } = require('./src/templates/project.js');
+const { notesIndex } = require('./src/templates/notes-index.js');
+const { note: notePage } = require('./src/templates/note.js');
+const { page: staticPage } = require('./src/templates/page.js');
+const { notFound } = require('./src/templates/not-found.js');
+
+// Where everything lives. Every other path is built from these, so the script
+// works no matter which folder you run it from.
 const ROOT = __dirname;
 const CONTENT = path.join(ROOT, 'content');
+const MEDIA = path.join(ROOT, 'media');
 const SRC = path.join(ROOT, 'src');
 const DIST = path.join(ROOT, 'dist');
+const CACHE = path.join(ROOT, '.cache');
+const CACHE_IMAGES = path.join(CACHE, 'images');
+const CACHE_INDEX = path.join(CACHE, 'images.json');
 
 // Collected problems. Errors stop the build; warnings do not.
 const errors = [];
 const warnings = [];
 
+// Image sizes. SPEC.md §8.3.
+const IMAGE_WIDTHS = [800, 1200, 1600];
+const IMAGE_QUALITY = 78;
+const POSTER_RATIO = 16 / 9;
+const POSTER_RATIO_TOLERANCE = 0.01;   // 1%
 
-/* ------------------------------------------------------------------ *
+
+/* ================================================================== *
+ * SMALL HELPERS
+ * ================================================================== */
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+}
+
+// Does this file or folder exist?
+function exists(target) {
+  return fs.existsSync(target);
+}
+
+// List what is inside a folder, marking sub-folders with a trailing slash, so
+// error messages can say "Files present: hero.jpg, stills/".
+function listFolder(dir) {
+  if (!exists(dir)) return '';
+  return fs.readdirSync(dir, { withFileTypes: true })
+    .map(function (entry) { return entry.isDirectory() ? entry.name + '/' : entry.name; })
+    .join(', ');
+}
+
+// Windows uses backslashes in paths; URLs and cache keys always use forward
+// slashes. This keeps the two from getting mixed up.
+function toUrlPath(value) {
+  return value.split(path.sep).join('/');
+}
+
+
+/* ================================================================== *
  * 1. LOAD AND VALIDATE                              SPEC.md §8.2 (1)
  *
- * If anything is wrong we collect ALL the problems first, print them
- * together, and exit without writing a single file. A failed build can
- * therefore never take the live site down.
- * ------------------------------------------------------------------ */
+ * Every message names the file, the entry, the field, what was wrong,
+ * what was given, and how to fix it — SPEC.md §8.4. They are written
+ * to be read by a non-developer under time pressure.
+ * ================================================================== */
 
-// Read a JSON file and turn it into data the script can use. If the file has
-// a syntax problem — nearly always a stray or missing comma — say so in words
-// rather than showing a programmer's error.
+// Read a JSON file. If it has a syntax problem — nearly always a stray or a
+// missing comma — say so in words rather than showing a programmer's error.
 function readJson(filePath, label) {
   let text;
   try {
@@ -82,11 +137,12 @@ function readJson(filePath, label) {
   }
 }
 
-// site.json — the global settings. SPEC.md §7.1.
+
+/* ---- site.json — SPEC.md §7.1 ------------------------------------ */
+
 // ("year" is the {{YEAR}} placeholder from §2. It lives here rather than being
-//  read from the clock, because §8.5 requires builds to be repeatable: the same
-//  input must always produce the same output, with no dates baked in at build
-//  time. Change it once a year.)
+//  read from the clock, because §8.5 requires repeatable builds: the same input
+//  must always produce the same output, with no dates baked in at build time.)
 const SITE_REQUIRED = ['name', 'role', 'location', 'tagline', 'email', 'domain', 'year', 'lang', 'nav'];
 
 function loadSite() {
@@ -113,18 +169,35 @@ function loadSite() {
   return site;
 }
 
-// projects.json — every project, in the order they appear on the site.
-// SPEC.md §7.2. Phase 1 checks only the things needed to render the homepage;
-// Phase 3 adds the full validation table from §8.4 (media folders, poster
-// files, YouTube IDs, runtime format, and so on).
-const PROJECT_REQUIRED = ['slug', 'title', 'client', 'year', 'runtime', 'language', 'role', 'poster', 'summary'];
+
+/* ---- projects.json — SPEC.md §7.2 and §8.4 ----------------------- */
+
+// Every field a project must have, with an example used in the error message
+// when one is missing.
+const PROJECT_REQUIRED = {
+  slug: '"slug": "my-project"',
+  title: '"title": "My Project Title"',
+  client: '"client": "Client Name"',
+  year: '"year": 2026',
+  runtime: '"runtime": "4:12"',
+  language: '"language": "English"',
+  role: '"role": "Director, Edit"',
+  poster: '"poster": "poster.jpg"',
+  summary: '"summary": "Two to four sentences about the problem this piece had to solve."',
+};
+
+// A YouTube ID is 11 characters: letters, digits, hyphens and underscores.
+const YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/;
+
+// A runtime is "4:12" or "12:30" — minutes, a colon, two digits of seconds.
+const RUNTIME = /^\d{1,3}:[0-5]\d$/;
 
 function loadProjects() {
-  const projects = readJson(path.join(CONTENT, 'projects.json'), 'content/projects.json');
+  const projects = readJson(path.join(CONTENT, 'projects.json'), 'projects.json');
   if (!projects) return [];
 
   if (!Array.isArray(projects)) {
-    errors.push('✗ content/projects.json must be a list of projects, starting with "[" and ending with "]".');
+    errors.push('✗ projects.json must be a list of projects, starting with "[" and ending with "]".');
     return [];
   }
 
@@ -132,76 +205,503 @@ function loadProjects() {
 
   projects.forEach(function (project, index) {
     // Humans count from 1, so "entry 1" is the first project in the file.
-    const entryNumber = index + 1;
-    const name = project.slug ? ' ("' + project.slug + '")' : '';
-    const where = 'content/projects.json, entry ' + entryNumber + name + ':';
+    const number = index + 1;
+    const named = project.slug ? ' ("' + project.slug + '")' : '';
+    const at = 'projects.json, entry ' + number + named + ':';
+    const entry = 'Entry "' + (project.slug || '?') + '":';
 
-    PROJECT_REQUIRED.forEach(function (field) {
+    // -- required fields --
+    Object.keys(PROJECT_REQUIRED).forEach(function (field) {
       if (project[field] === undefined || project[field] === '') {
-        errors.push('✗ ' + where + ' missing required field "' + field + '". Add it, e.g. "' + field + '": "…".');
+        errors.push('✗ ' + at + ' missing required field "' + field + '". Add it, e.g. ' + PROJECT_REQUIRED[field] + '.');
       }
     });
 
-    // "youtube" is required but may be null, so it is checked separately.
+    // "youtube" is required but is allowed to be null, so it is checked apart
+    // from the others (a missing key is an error; a null value is fine).
     if (!('youtube' in project)) {
-      errors.push('✗ ' + where + ' missing required field "youtube". Give the 11-character video ID, or null if there is no video.');
+      errors.push('✗ ' + at + ' missing required field "youtube". Give the 11-character video ID, or null if there is no video.');
+    } else if (project.youtube !== null) {
+      if (typeof project.youtube !== 'string' || !YOUTUBE_ID.test(project.youtube)) {
+        const given = String(project.youtube);
+        // If they pasted a whole URL, pull the ID out and show them.
+        const fromUrl = /(?:youtu\.be\/|[?&]v=|embed\/)([A-Za-z0-9_-]{11})/.exec(given);
+        if (fromUrl) {
+          errors.push('✗ projects.json, entry ' + number + ': "youtube" must be the 11-character video ID, not a URL. You gave "' + given + '". Use "' + fromUrl[1] + '".');
+        } else {
+          errors.push('✗ projects.json, entry ' + number + ': "youtube" must be the 11-character video ID, e.g. "dQw4w9WgXcQ". You gave "' + given + '".');
+        }
+      }
     }
 
-    if (typeof project.slug === 'string') {
+    // -- slug --
+    if (typeof project.slug === 'string' && project.slug !== '') {
       if (!/^[a-z0-9-]+$/.test(project.slug)) {
-        errors.push('✗ content/projects.json, entry ' + entryNumber + ': slug "' + project.slug + '" is invalid. Use lowercase letters, digits and hyphens only, e.g. "my-project".');
+        errors.push('✗ projects.json, entry ' + number + ': slug "' + project.slug + '" is invalid. Use lowercase letters, digits and hyphens only, e.g. "my-project".');
       }
       if (seenSlugs[project.slug]) {
-        errors.push('✗ content/projects.json: slug "' + project.slug + '" is used twice (entries ' + seenSlugs[project.slug] + ' and ' + entryNumber + '). Slugs must be unique.');
+        errors.push('✗ projects.json: slug "' + project.slug + '" is used twice (entries ' + seenSlugs[project.slug] + ' and ' + number + '). Slugs must be unique.');
       } else {
-        seenSlugs[project.slug] = entryNumber;
+        seenSlugs[project.slug] = number;
       }
     }
+
+    // -- year --
+    if (project.year !== undefined && !/^\d{4}$/.test(String(project.year))) {
+      errors.push('✗ ' + entry + ' "year" must be four digits, e.g. 2026. You gave "' + project.year + '".');
+    }
+
+    // -- runtime --
+    if (project.runtime !== undefined && project.runtime !== '' &&
+        project.runtime !== '—' && !RUNTIME.test(String(project.runtime))) {
+      errors.push('✗ ' + entry + ' "runtime" must look like "4:12" or "12:30", or "—" if there is no video. You gave "' + project.runtime + '".');
+    }
+
+    // -- the media folder, the poster, and the stills --
+    if (typeof project.slug === 'string' && project.slug !== '') {
+      const folder = path.join(MEDIA, project.slug);
+
+      if (!exists(folder)) {
+        errors.push('✗ projects.json, entry ' + number + named + ': no folder found at media/' + project.slug + '/. Create it and add poster.jpg.');
+      } else {
+        if (project.poster && !exists(path.join(folder, project.poster))) {
+          errors.push('✗ ' + entry + ' poster "' + project.poster + '" not found in media/' + project.slug + '/. Files present: ' + listFolder(folder));
+        }
+
+        // Stills may be written as plain filenames or as {file, alt} objects.
+        normaliseStills(project).forEach(function (still) {
+          if (!exists(path.join(folder, 'stills', still.file))) {
+            errors.push('✗ ' + entry + ' still "' + still.file + '" listed but not found in media/' + project.slug + '/stills/.');
+          }
+        });
+      }
+    }
+
+    // -- warnings: the build still succeeds. SPEC.md §8.4 --
+    if (typeof project.summary === 'string' && project.summary.length > 400) {
+      warnings.push('⚠ Entry "' + project.slug + '": summary is ' + project.summary.length + ' characters. Under 400 reads better.');
+    }
+    if (project.youtube === null && normaliseStills(project).length === 0) {
+      warnings.push('⚠ Entry "' + project.slug + '": no video and no stills, so the page will be text only.');
+    }
+    normaliseStills(project).forEach(function (still) {
+      if (still.generatedAlt) {
+        warnings.push('⚠ Entry "' + project.slug + '": still "' + still.file + '" has no alt text. Real alt text helps blind visitors and search.');
+      }
+    });
   });
 
   return projects;
 }
 
+// Stills come in two shapes — a plain filename, or an object with alt text.
+// This turns both into the same thing so the rest of the code has one case to
+// handle. SPEC.md §7.2.
+function normaliseStills(project) {
+  if (!Array.isArray(project.stills)) return [];
+  return project.stills.map(function (still, index) {
+    if (typeof still === 'string') {
+      return {
+        file: still,
+        alt: (project.title || '') + ' — still ' + (index + 1),
+        generatedAlt: true,
+      };
+    }
+    return {
+      file: still.file,
+      alt: still.alt || (project.title || '') + ' — still ' + (index + 1),
+      generatedAlt: !still.alt,
+    };
+  });
+}
 
-/* ------------------------------------------------------------------ *
- * 2. WRITE FILES
- * ------------------------------------------------------------------ */
 
-// Remember every file we write, so the report at the end can describe them.
+/* ---- notes and pages — SPEC.md §7.3, §7.4 ------------------------ */
+
+// Turn a YAML date into the plain "2026-08-14" text the site displays.
+// Always read in UTC, so the same file produces the same string everywhere.
+function formatDate(value) {
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  return String(value).slice(0, 10);
+}
+
+function loadNotes() {
+  const dir = path.join(CONTENT, 'notes');
+  if (!exists(dir)) return [];
+
+  const notes = [];
+
+  fs.readdirSync(dir).sort().forEach(function (fileName) {
+    if (!fileName.endsWith('.md')) return;
+
+    const where = 'content/notes/' + fileName;
+    const parsed = matter(fs.readFileSync(path.join(dir, fileName), 'utf8'));
+    const data = parsed.data;
+
+    if (!data.title) {
+      errors.push('✗ ' + where + ': front matter is missing "title". Add: title: Title of the note');
+    }
+    if (!data.date) {
+      errors.push('✗ ' + where + ': front matter is missing "date". Add: date: 2026-08-14');
+      return;
+    }
+
+    const date = formatDate(data.date);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      errors.push('✗ ' + where + ': "date" must be written as year-month-day, e.g. 2026-08-14. You gave "' + data.date + '".');
+      return;
+    }
+
+    notes.push({
+      slug: fileName.replace(/\.md$/, ''),      // the filename becomes the URL
+      title: data.title,
+      date: date,
+      summary: data.summary || '',
+      draft: data.draft === true,
+      html: marked.parse(parsed.content),
+    });
+  });
+
+  // Newest first. SPEC.md §7.3.
+  notes.sort(function (a, b) {
+    if (a.date === b.date) return a.slug < b.slug ? -1 : 1;   // stable, for §8.5
+    return a.date < b.date ? 1 : -1;
+  });
+
+  return notes;
+}
+
+function loadPages() {
+  const dir = path.join(CONTENT, 'pages');
+  const pages = {};
+  if (!exists(dir)) return pages;
+
+  fs.readdirSync(dir).sort().forEach(function (fileName) {
+    if (!fileName.endsWith('.md')) return;
+
+    const where = 'content/pages/' + fileName;
+    const parsed = matter(fs.readFileSync(path.join(dir, fileName), 'utf8'));
+
+    if (!parsed.data.title) {
+      errors.push('✗ ' + where + ': front matter is missing "title". Add: title: About');
+    }
+
+    const name = fileName.replace(/\.md$/, '');
+    pages[name] = {
+      slug: name,
+      title: parsed.data.title,
+      summary: parsed.data.summary || '',
+      html: marked.parse(parsed.content),
+    };
+  });
+
+  return pages;
+}
+
+
+/* ================================================================== *
+ * 2. IMAGES                                            SPEC.md §8.3
+ *
+ * You drop full-resolution originals into media/. This turns each one
+ * into WebP copies at 800, 1200 and 1600 pixels wide, and never makes
+ * an image bigger than it started.
+ *
+ * THE CACHE
+ * Resizing is the slow part of the build, so finished WebP files are
+ * kept in .cache/images/ and simply copied into dist/ next time. A
+ * source is only re-encoded when its modification time or its size
+ * changes — i.e. when you actually edited it. .cache/ is not committed
+ * and can be deleted at any time; the next build just rebuilds it.
+ * ================================================================== */
+
+let imagesProcessed = 0;
+let imagesCached = 0;
+
+// Load the record of what has already been encoded.
+function loadImageCache() {
+  if (!exists(CACHE_INDEX)) return {};
+  try {
+    return JSON.parse(fs.readFileSync(CACHE_INDEX, 'utf8'));
+  } catch (err) {
+    return {};   // an unreadable cache is not an error; just start fresh
+  }
+}
+
+// Find every image inside media/, at any depth.
+function findImages(dir, base) {
+  const found = [];
+  if (!exists(dir)) return found;
+
+  fs.readdirSync(dir, { withFileTypes: true }).sort(function (a, b) {
+    return a.name < b.name ? -1 : 1;      // sorted, so builds stay repeatable
+  }).forEach(function (item) {
+    const full = path.join(dir, item.name);
+    if (item.isDirectory()) {
+      found.push.apply(found, findImages(full, base));
+    } else if (/\.(jpe?g|png|webp)$/i.test(item.name)) {
+      found.push(toUrlPath(path.relative(base, full)));
+    }
+  });
+
+  return found;
+}
+
+/**
+ * Resize one source image into WebP copies.
+ *
+ * @param {string} relative   e.g. "example-project-one/poster.jpg"
+ * @param {Set}    posters    the relative paths that must be 16:9
+ * @param {object} cache      the record from .cache/images.json
+ * @returns {object}          { width, height, outputs: [{ width, file }] }
+ */
+async function processImage(relative, posters, cache) {
+  const source = path.join(MEDIA, relative);
+  const stat = fs.statSync(source);
+  const previous = cache[relative];
+
+  // Has it changed since last time, and are all its outputs still on disk?
+  const unchanged = previous &&
+    previous.mtimeMs === stat.mtimeMs &&
+    previous.size === stat.size &&
+    previous.outputs.every(function (out) { return exists(path.join(CACHE_IMAGES, out.file)); });
+
+  if (unchanged) {
+    imagesCached += 1;
+    // Re-issue the 16:9 warning, since it describes the file, not the build.
+    if (previous.ratioWarning) warnings.push(previous.ratioWarning);
+    return previous;
+  }
+
+  const image = sharp(source);
+  const meta = await image.metadata();
+  let sourceWidth = meta.width;
+  let sourceHeight = meta.height;
+  let pipeline = image;
+  let ratioWarning = null;
+
+  // Posters must be 16:9. If a source is off by more than 1%, say so and
+  // centre-crop rather than failing the build. SPEC.md §8.3.
+  if (posters.has(relative)) {
+    const ratio = sourceWidth / sourceHeight;
+    if (Math.abs(ratio - POSTER_RATIO) / POSTER_RATIO > POSTER_RATIO_TOLERANCE) {
+      ratioWarning = '⚠ media/' + relative + ' is not 16:9 (it is ' +
+        ratio.toFixed(3) + ':1, or roughly ' + sourceWidth + '×' + sourceHeight +
+        '). It has been centre-cropped. Re-export at 1920×1080 to control the crop yourself.';
+      warnings.push(ratioWarning);
+
+      // Keep the full width and trim the height, or vice versa, whichever
+      // loses less of the frame.
+      let cropWidth = sourceWidth;
+      let cropHeight = Math.round(sourceWidth / POSTER_RATIO);
+      if (cropHeight > sourceHeight) {
+        cropHeight = sourceHeight;
+        cropWidth = Math.round(sourceHeight * POSTER_RATIO);
+      }
+      pipeline = image.extract({
+        left: Math.round((sourceWidth - cropWidth) / 2),
+        top: Math.round((sourceHeight - cropHeight) / 2),
+        width: cropWidth,
+        height: cropHeight,
+      });
+      sourceWidth = cropWidth;
+      sourceHeight = cropHeight;
+    }
+  }
+
+  // Which widths to emit. Never upscale: if a source is 1000px wide, emit 800
+  // and 1000 and stop. SPEC.md §8.3.
+  const widths = IMAGE_WIDTHS.filter(function (w) { return w <= sourceWidth; });
+  if (widths.indexOf(sourceWidth) === -1 && sourceWidth < IMAGE_WIDTHS[IMAGE_WIDTHS.length - 1]) {
+    widths.push(sourceWidth);
+  }
+  widths.sort(function (a, b) { return a - b; });
+
+  const outputs = [];
+  const baseName = relative.replace(/\.[^.]+$/, '');   // drop the extension
+
+  for (const width of widths) {
+    const outFile = baseName + '-' + width + '.webp';
+    const outPath = path.join(CACHE_IMAGES, outFile);
+    fs.mkdirSync(path.dirname(outPath), { recursive: true });
+
+    await pipeline
+      .clone()
+      .resize({ width: width, withoutEnlargement: true })
+      .webp({ quality: IMAGE_QUALITY })
+      .toFile(outPath);
+
+    outputs.push({ width: width, file: outFile });
+  }
+
+  imagesProcessed += 1;
+
+  const record = {
+    mtimeMs: stat.mtimeMs,
+    size: stat.size,
+    width: sourceWidth,
+    height: sourceHeight,
+    outputs: outputs,
+  };
+  if (ratioWarning) record.ratioWarning = ratioWarning;
+
+  cache[relative] = record;
+  return record;
+}
+
+// Markdown in a note is written with ordinary image links, like
+// ![A caption](media/notes/my-note/frame.jpg). Those point at the original
+// full-resolution file, which must never be served. This swaps each one for
+// the resized WebP set, so note images get the same treatment as project
+// stills and break out to full media width. SPEC.md §7.3, §9.5.
+function rewriteNoteImages(html, images) {
+  return html.replace(/<img\s+src="([^"]+)"([^>]*)>/g, function (whole, src, rest) {
+    const key = decodeURIComponent(src).replace(/^\/?media\//, '');
+    const record = images[key];
+    if (!record) return whole;      // not one of ours — leave it alone
+
+    const altMatch = /alt="([^"]*)"/.exec(rest);
+    return '<figure class="wide">' + image(record, { alt: altMatch ? altMatch[1] : '' }) + '</figure>';
+  })
+  // Markdown puts an image on its own line inside a paragraph. Lift it out,
+  // so the figure can be wider than the paragraph it was sitting in.
+  .replace(/<p>(<figure class="wide">[\s\S]*?<\/figure>)<\/p>/g, '$1');
+}
+
+/* ================================================================== *
+ * SITEMAP, ROBOTS, FEED AND HEADERS                    SPEC.md §14.3
+ * ================================================================== */
+
+// Characters that would otherwise break an XML file.
+function escapeXml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+// Tells search engines where every page is. No <lastmod> dates: they would
+// change on every build and make version-control diffs meaningless (§8.5).
+function sitemapXml(site, paths) {
+  const urls = paths.map(function (p) {
+    return '  <url><loc>' + escapeXml(site.domain + p) + '</loc></url>';
+  });
+
+  return '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+    urls.join('\n') + '\n' +
+    '</urlset>\n';
+}
+
+function robotsTxt(site) {
+  return 'User-agent: *\n' +
+    'Allow: /\n' +
+    '\n' +
+    'Sitemap: ' + site.domain + '/sitemap.xml\n';
+}
+
+// RSS dates have to be in the old email format: "Thu, 14 Aug 2026 00:00:00 GMT".
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function rssDate(isoDate) {
+  const d = new Date(isoDate + 'T00:00:00Z');
+  return DAYS[d.getUTCDay()] + ', ' +
+    String(d.getUTCDate()).padStart(2, '0') + ' ' +
+    MONTHS[d.getUTCMonth()] + ' ' +
+    d.getUTCFullYear() + ' 00:00:00 GMT';
+}
+
+// An RSS 2.0 feed of the notes only — not the projects. SPEC.md §14.3.
+function feedXml(site, notes) {
+  const items = notes.map(function (note) {
+    const url = site.domain + '/notes/' + note.slug + '/';
+    return [
+      '  <item>',
+      '    <title>' + escapeXml(note.title) + '</title>',
+      '    <link>' + escapeXml(url) + '</link>',
+      '    <guid isPermaLink="true">' + escapeXml(url) + '</guid>',
+      '    <pubDate>' + rssDate(note.date) + '</pubDate>',
+      note.summary ? '    <description>' + escapeXml(note.summary) + '</description>' : '',
+      '  </item>',
+    ].filter(function (line) { return line !== ''; }).join('\n');
+  });
+
+  return '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">\n' +
+    '<channel>\n' +
+    '  <title>' + escapeXml(site.name) + ' — Notes</title>\n' +
+    '  <link>' + escapeXml(site.domain) + '/notes/</link>\n' +
+    '  <description>' + escapeXml(site.tagline) + '</description>\n' +
+    '  <language>' + escapeXml(site.lang) + '</language>\n' +
+    '  <atom:link href="' + escapeXml(site.domain) + '/feed.xml" rel="self" type="application/rss+xml"/>\n' +
+    (items.length ? items.join('\n') + '\n' : '') +
+    '</channel>\n' +
+    '</rss>\n';
+}
+
+// Cloudflare Pages reads this file and sets these response headers.
+// Images and fonts never change once published — their filenames carry the
+// size — so they can be cached for a year. HTML changes whenever you rebuild,
+// so it is cached for an hour.
+function headersFile() {
+  return '/*\n' +
+    '  Cache-Control: public, max-age=3600\n' +
+    '\n' +
+    '/m/*\n' +
+    '  Cache-Control: public, max-age=31536000, immutable\n' +
+    '\n' +
+    '/f/*\n' +
+    '  Cache-Control: public, max-age=31536000, immutable\n';
+}
+
+
+// Copy a finished WebP out of the cache and into dist/m/.
+function publishImage(record, written) {
+  record.outputs.forEach(function (out) {
+    const from = path.join(CACHE_IMAGES, out.file);
+    const to = path.join(DIST, 'm', out.file);
+    fs.mkdirSync(path.dirname(to), { recursive: true });
+    fs.copyFileSync(from, to);
+    written.push({ file: toUrlPath(path.join('m', out.file)), bytes: fs.statSync(to).size });
+  });
+}
+
+
+/* ================================================================== *
+ * 3. WRITING FILES
+ * ================================================================== */
+
 const written = [];
 
 function writeFile(relativePath, contents) {
   const target = path.join(DIST, relativePath);
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.writeFileSync(target, contents);
-  written.push({ file: relativePath, bytes: Buffer.byteLength(contents) });
+  written.push({ file: toUrlPath(relativePath), bytes: Buffer.byteLength(contents) });
 }
 
-// Add up the size of everything inside a folder, including sub-folders.
 function folderSize(dir) {
   let total = 0;
-  fs.readdirSync(dir, { withFileTypes: true }).forEach(function (entry) {
-    const full = path.join(dir, entry.name);
-    total += entry.isDirectory() ? folderSize(full) : fs.statSync(full).size;
+  fs.readdirSync(dir, { withFileTypes: true }).forEach(function (item) {
+    const full = path.join(dir, item.name);
+    total += item.isDirectory() ? folderSize(full) : fs.statSync(full).size;
   });
   return total;
 }
 
-function formatBytes(bytes) {
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
-}
 
+/* ================================================================== *
+ * 4. THE BUILD ITSELF                                   SPEC.md §8.2
+ * ================================================================== */
 
-/* ------------------------------------------------------------------ *
- * 3. THE BUILD ITSELF                                    SPEC.md §8.2
- * ------------------------------------------------------------------ */
-
-function build() {
+async function build() {
   // --- Step 1: load and validate everything. ---
   const site = loadSite();
   const allProjects = loadProjects();
+  const allNotes = loadNotes();
+  const pages = loadPages();
 
   // If anything is wrong, print every problem at once and stop. Nothing has
   // been written at this point, so dist/ is left exactly as it was.
@@ -213,50 +713,203 @@ function build() {
   }
 
   // --- Step 2: drop anything marked as a draft. SPEC.md §8.2 (2) ---
-  const projects = allProjects.filter(function (project) { return project.draft !== true; });
-  const draftCount = allProjects.length - projects.length;
+  const projects = allProjects.filter(function (p) { return p.draft !== true; });
+  const notes = allNotes.filter(function (n) { return !n.draft; });
+  const draftProjects = allProjects.length - projects.length;
+  const draftNotes = allNotes.length - notes.length;
 
   // --- Step 3: wipe dist/ completely and recreate it. SPEC.md §8.2 (3) ---
   fs.rmSync(DIST, { recursive: true, force: true });
   fs.mkdirSync(DIST, { recursive: true });
 
   // --- Step 4: copy the static files across. SPEC.md §8.2 (4) ---
-  // Phase 2 adds the fonts (src/fonts/ → dist/f/) and Phase 5 adds video.js.
   writeFile('site.css', fs.readFileSync(path.join(SRC, 'site.css'), 'utf8'));
 
-  // --- Step 5: images. Phase 3. ---
-  // Nothing happens here yet. Full-resolution originals sit in media/ and are
-  // resized into dist/m/<slug>/ once the image pipeline (SPEC.md §8.3) is built.
+  // The one and only JavaScript file on the site. SPEC.md §12.
+  const videoJs = fs.readFileSync(path.join(SRC, 'video.js'), 'utf8');
+  writeFile('video.js', videoJs);
+  if (Buffer.byteLength(videoJs) > 3 * 1024) {
+    warnings.push('⚠ video.js is ' + formatBytes(Buffer.byteLength(videoJs)) + ', over the 3 KB budget in SPEC.md §13.');
+  }
+
+  // The fonts live in src/fonts/ and are served from /f/ — a short path
+  // because it appears in every page's preload tags.
+  const fontsDir = path.join(SRC, 'fonts');
+  let fontBytes = 0;
+  fs.readdirSync(fontsDir).sort().forEach(function (fileName) {
+    if (!fileName.endsWith('.woff2')) return;
+    const data = fs.readFileSync(path.join(fontsDir, fileName));
+    writeFile(path.join('f', fileName), data);
+    fontBytes += data.length;
+  });
+  if (fontBytes > 80 * 1024) {
+    warnings.push('⚠ Fonts total ' + formatBytes(fontBytes) + ', over the 80 KB budget in SPEC.md §13.');
+  }
+
+  // --- Step 5: process the images. SPEC.md §8.2 (5), §8.3 ---
+  fs.mkdirSync(CACHE_IMAGES, { recursive: true });
+  const cache = loadImageCache();
+
+  // Which files are posters? Those, and only those, must be 16:9.
+  const posters = new Set();
+  projects.forEach(function (project) {
+    posters.add(project.slug + '/' + project.poster);
+  });
+
+  // A lookup the page templates use later: "slug/poster.jpg" → its sizes.
+  const images = {};
+
+  // Only media belonging to something actually published gets copied into
+  // dist/. Anything else — a draft project, a draft note, or a folder for a
+  // project you have not written into projects.json yet — is left alone.
+  // Without this, unpublished work would quietly go live.
+  const publishedProjectSlugs = new Set(projects.map(function (p) { return p.slug; }));
+  const publishedNoteSlugs = new Set(notes.map(function (n) { return n.slug; }));
+  const skippedFolders = new Set();
+
+  function isPublished(relative) {
+    const parts = relative.split('/');
+    if (parts[0] === 'notes') return publishedNoteSlugs.has(parts[1]);
+    return publishedProjectSlugs.has(parts[0]);
+  }
+
+  for (const relative of findImages(MEDIA, MEDIA)) {
+    if (!isPublished(relative)) {
+      const parts = relative.split('/');
+      skippedFolders.add(parts[0] === 'notes' ? 'notes/' + parts[1] : parts[0]);
+      continue;
+    }
+
+    const record = await processImage(relative, posters, cache);
+    images[relative] = record;
+    publishImage(record, written);
+  }
+
+  // Tell the owner what was left out, so a folder never sits there being
+  // silently ignored when they expected it to appear.
+  Array.from(skippedFolders).sort().forEach(function (folder) {
+    warnings.push('⚠ media/' + folder + '/ was skipped — nothing published refers to it. ' +
+      'Either it belongs to a draft, or there is no matching entry in projects.json.');
+  });
+
+  // Save the cache index, with keys in a fixed order so the file does not
+  // churn between builds.
+  const ordered = {};
+  Object.keys(cache).sort().forEach(function (key) { ordered[key] = cache[key]; });
+  fs.writeFileSync(CACHE_INDEX, JSON.stringify(ordered, null, 2) + '\n');
 
   // --- Step 6: render the pages. SPEC.md §8.2 (6) ---
-  // Phase 1 renders the homepage only. The work index, project pages, notes,
-  // about, contact and 404 arrive in Phase 4.
-  const page = home(site, projects);
-  writeFile('index.html', layout(site, page));
+  // Every URL ends in a slash and is written as <path>/index.html, except the
+  // 404 page which Cloudflare Pages looks for at the top level. SPEC.md §14.4.
+  // Collected as we go, so the sitemap lists exactly what was built. The 404
+  // page is deliberately left out — it is not a destination.
+  const sitemapPaths = [];
 
-  // --- Step 7: sitemap, robots, feed, _headers. Phase 6. ---
+  function writePage(page) {
+    const target = page.path === '/404.html'
+      ? '404.html'
+      : path.join(page.path.replace(/^\/|\/$/g, ''), 'index.html');
+    writeFile(target, layout(site, page));
+    if (page.path !== '/404.html') sitemapPaths.push(page.path);
+  }
+
+  // -- home --
+  writePage(home(site, projects, notes));
+
+  // -- work index --
+  writePage(workIndex(site, projects));
+
+  // -- one page per project --
+  projects.forEach(function (item, index) {
+    // Previous and next wrap around, so the last project's "next" is the
+    // first one. Draft projects were already removed, so they never appear
+    // in this chain. SPEC.md §9.3 step 10.
+    const previous = projects[(index - 1 + projects.length) % projects.length];
+    const following = projects[(index + 1) % projects.length];
+
+    const posterKey = item.slug + '/' + item.poster;
+    const posterRecord = images[posterKey];
+
+    // The social-sharing image: the poster, so a link pasted into WhatsApp or
+    // Slack unfurls with the actual work. SPEC.md §14.1.
+    let ogImage = null;
+    if (posterRecord) {
+      const pick = posterRecord.outputs.filter(function (o) { return o.width <= 1200; }).pop()
+        || posterRecord.outputs[0];
+      ogImage = '/m/' + pick.file;
+    }
+
+    writePage(projectPage(site, {
+      project: item,
+      poster: posterRecord,
+      stills: normaliseStills(item).map(function (still) {
+        return { alt: still.alt, record: images[item.slug + '/stills/' + still.file] };
+      }).filter(function (still) { return still.record; }),
+      summaryHtml: marked.parse(item.summary),
+      technicalHtml: item.technical ? marked.parse(item.technical) : '',
+      // A project on its own would otherwise link to itself both ways.
+      prev: projects.length > 1 ? previous : null,
+      next: projects.length > 1 ? following : null,
+      ogImage: ogImage,
+    }));
+  });
+
+  // -- notes index and one page per note --
+  writePage(notesIndex(site, notes));
+
+  notes.forEach(function (item, index) {
+    writePage(notePage(site, {
+      note: item,
+      html: rewriteNoteImages(item.html, images),
+      prev: notes[index - 1] || null,      // the newer note
+      next: notes[index + 1] || null,      // the older note
+    }));
+  });
+
+  // -- about, contact, and anything else in content/pages/ --
+  Object.keys(pages).sort().forEach(function (name) {
+    writePage(staticPage(site, pages[name]));
+  });
+
+  // -- 404 --
+  writePage(notFound(site));
+
+  // --- Step 7: sitemap, robots, feed, _headers. SPEC.md §8.2 (7), §14.3 ---
+  writeFile('sitemap.xml', sitemapXml(site, sitemapPaths));
+  writeFile('robots.txt', robotsTxt(site));
+  writeFile('feed.xml', feedXml(site, notes));
+  writeFile('_headers', headersFile());
 
   // --- Step 8: the report. SPEC.md §8.2 (8) ---
-  const largest = written.reduce(function (biggest, entry) {
-    return entry.bytes > biggest.bytes ? entry : biggest;
-  }, { file: '—', bytes: 0 });
+  const htmlPages = written.filter(function (e) { return e.file.endsWith('.html'); });
 
-  // 30 KB per page is the performance ceiling from SPEC.md §13.
-  written.forEach(function (entry) {
-    if (entry.file.endsWith('.html') && entry.bytes > 30 * 1024) {
-      warnings.push('⚠ ' + entry.file + ' is ' + formatBytes(entry.bytes) + ', over the 30 KB page budget.');
+  // The ceiling in SPEC.md §13 is 30 KB of HTML *plus* CSS, because both have
+  // to arrive before the page can paint. The stylesheet is the same on every
+  // page, so it counts against every page.
+  const cssBytes = written.filter(function (e) { return e.file === 'site.css'; })
+    .reduce(function (total, e) { return total + e.bytes; }, 0);
+
+  htmlPages.forEach(function (entry) {
+    if (entry.bytes + cssBytes > 30 * 1024) {
+      warnings.push('⚠ ' + entry.file + ' plus site.css is ' + formatBytes(entry.bytes + cssBytes) +
+        ', over the 30 KB budget in SPEC.md §13.');
     }
   });
 
-  const htmlPages = written.filter(function (entry) { return entry.file.endsWith('.html'); });
+  const largest = htmlPages.reduce(function (biggest, entry) {
+    return entry.bytes > biggest.bytes ? entry : biggest;
+  }, { file: '—', bytes: 0 });
 
   console.log('');
   console.log('  Built dist/');
   console.log('  Pages written    ' + htmlPages.length);
-  console.log('  Projects         ' + projects.length + (draftCount ? ' (' + draftCount + ' draft skipped)' : ''));
-  console.log('  Images           0 processed, 0 cached  (Phase 3)');
+  console.log('  Projects         ' + projects.length + (draftProjects ? ' (' + draftProjects + ' draft skipped)' : ''));
+  console.log('  Notes            ' + notes.length + (draftNotes ? ' (' + draftNotes + ' draft skipped)' : ''));
+  console.log('  Images           ' + imagesProcessed + ' processed, ' + imagesCached + ' reused from cache');
+  console.log('  Fonts            ' + formatBytes(fontBytes) + '  (budget 80 KB)');
   console.log('  Total size       ' + formatBytes(folderSize(DIST)));
-  console.log('  Largest page     ' + largest.file + '  ' + formatBytes(largest.bytes));
+  console.log('  Largest page     ' + largest.file + '  ' + formatBytes(largest.bytes) +
+    '  (+ ' + formatBytes(cssBytes) + ' CSS = ' + formatBytes(largest.bytes + cssBytes) + ' of 30 KB)');
 
   if (warnings.length) {
     console.log('');
@@ -265,4 +918,9 @@ function build() {
   console.log('');
 }
 
-build();
+// Image work happens in the background, so the whole build is wrapped in a
+// promise. If anything unexpected goes wrong, show it and stop.
+build().catch(function (err) {
+  console.error('\n✗ The build stopped unexpectedly:\n  ' + err.message + '\n');
+  process.exit(1);
+});

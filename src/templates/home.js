@@ -1,49 +1,36 @@
 // home.js — the homepage, "/". SPEC.md §9.1.
 //
 // Deliberately short: name, role, tagline, a rule, the featured projects as
-// manifest rows, and one link to the full work index. No hero image, no
-// showreel, no "scroll for more".
+// manifest rows, one link to the full work index, and the three most recent
+// notes. No hero image, no showreel, no "scroll for more".
 
 'use strict';
 
-const { escapeHtml } = require('./layout.js');
+const { escapeHtml, manifestRow } = require('./layout.js');
 
-// "4:12" becomes "0:04:12" — SPEC.md §9.2. The site's grammar is a delivery
-// manifest, so runtimes are rendered as full timecode. "—" passes through
-// unchanged, for projects that are stills only.
-function toTimecode(runtime) {
-  if (runtime === '—') return '—';
-  const parts = String(runtime).split(':');
-  const minutes = parseInt(parts[0], 10);
-  const seconds = parts[1];
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-  return hours + ':' + String(remainingMinutes).padStart(2, '0') + ':' + seconds;
-}
+// The three most recent notes, title and date only. SPEC.md §9.1.
+function recentNotes(notes) {
+  if (!notes.length) return '';
 
-// One row of the manifest: title on the left, client / year / timecode on the
-// right. The whole row is the click target.
-function manifestRow(project) {
-  return [
-    '<li class="row">',
-    '<a class="row-link" href="/work/' + escapeHtml(project.slug) + '/">',
-    '<span class="row-title">' + escapeHtml(project.title) + '</span>',
-    '<span class="row-meta">',
-    '<span class="row-client">' + escapeHtml(project.client) + '</span>',
-    '<span class="row-year">' + escapeHtml(project.year) + '</span>',
-    '<span class="row-runtime">' + escapeHtml(toTimecode(project.runtime)) + '</span>',
-    '</span>',
-    '</a>',
-    '</li>',
-  ].join('');
+  const rows = notes.slice(0, 3).map(function (note) {
+    return [
+      '<li class="note-row">',
+      '<time class="note-date" datetime="' + escapeHtml(note.date) + '">' + escapeHtml(note.date) + '</time>',
+      '<a href="/notes/' + escapeHtml(note.slug) + '/">' + escapeHtml(note.title) + '</a>',
+      '</li>',
+    ].join('');
+  });
+
+  return '<h2 class="label">Notes</h2><ul class="note-list">' + rows.join('') + '</ul>';
 }
 
 /**
  * @param {object} site      Parsed content/site.json
  * @param {Array}  projects  Non-draft projects, in file order
+ * @param {Array}  notes     Non-draft notes, newest first
  * @returns {object}         A page object for layout()
  */
-function home(site, projects) {
+function home(site, projects, notes) {
   const featured = projects.filter(function (project) { return project.featured === true; });
 
   const body = [
@@ -55,6 +42,7 @@ function home(site, projects) {
       ? '<h2 class="label">Selected work</h2><ul class="manifest">' + featured.map(manifestRow).join('') + '</ul>'
       : '',
     '<p class="more"><a href="/work/">All work →</a></p>',
+    recentNotes(notes || []),
   ].filter(function (line) { return line !== ''; }).join('\n');
 
   return {
@@ -66,4 +54,4 @@ function home(site, projects) {
   };
 }
 
-module.exports = { home: home, toTimecode: toTimecode };
+module.exports = { home: home };

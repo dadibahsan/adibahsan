@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>Adib Ahsan — Notes</title>
+  <link>https://adibahsan.com/notes/</link>
+  <description>Motion · Film · Design</description>
+  <language>en</language>
+  <atom:link href="https://adibahsan.com/feed.xml" rel="self" type="application/rss+xml"/>
+  <item>
+    <title>A newer note</title>
+    <link>https://adibahsan.com/notes/second-note/</link>
+    <guid isPermaLink="true">https://adibahsan.com/notes/second-note/</guid>
+    <pubDate>Wed, 02 Sep 2026 00:00:00 GMT</pubDate>
+    <description>Should sort above the older one.</description>
+  </item>
+  <item>
+    <title>Title of the note</title>
+    <link>https://adibahsan.com/notes/example-note/</link>
+    <guid isPermaLink="true">https://adibahsan.com/notes/example-note/</guid>
+    <pubDate>Fri, 14 Aug 2026 00:00:00 GMT</pubDate>
+    <description>One sentence shown on the notes index.</description>
+  </item>
+</channel>
+</rss>

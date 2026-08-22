@@ -47,6 +47,18 @@ const server = http.createServer(function (request, response) {
   // Every page URL on this site ends in a slash and is served from the
   // index.html inside that folder — SPEC.md §14.4. So "/work/" means
   // "dist/work/index.html".
+  //
+  // If someone types "/work" without the slash, send them to "/work/" — the
+  // same thing Cloudflare Pages does live, so preview behaves like the real
+  // site rather than showing a confusing "not found".
+  if (!urlPath.endsWith('/') && !path.extname(urlPath)) {
+    if (fs.existsSync(path.join(DIST, urlPath, 'index.html'))) {
+      response.writeHead(301, { Location: urlPath + '/' });
+      response.end();
+      return;
+    }
+  }
+
   if (urlPath.endsWith('/')) urlPath += 'index.html';
 
   // Refuse to serve anything outside dist/, whatever the URL claims.

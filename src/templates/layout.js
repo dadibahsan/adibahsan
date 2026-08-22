@@ -19,6 +19,96 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+// Strip the HTML tags out of a string, for places that need plain text —
+// the <title> tag, meta descriptions, the RSS feed.
+function plainText(html) {
+  return String(html)
+    .replace(/<[^>]*>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Shorten text to a length without slicing a word in half.
+function truncate(text, limit) {
+  const clean = text.replace(/\s+/g, ' ').trim();
+  if (clean.length <= limit) return clean;
+  const cut = clean.slice(0, limit - 1);
+  const lastSpace = cut.lastIndexOf(' ');
+  return (lastSpace > limit * 0.6 ? cut.slice(0, lastSpace) : cut).replace(/[,.;:—-]+$/, '') + '…';
+}
+
+// "4:12" becomes "0:04:12" — SPEC.md §9.2. The site's grammar is a delivery
+// manifest, so runtimes are rendered as full timecode. "—" passes through
+// unchanged, for projects that are stills only.
+function toTimecode(runtime) {
+  if (runtime === '—') return '—';
+  const parts = String(runtime).split(':');
+  const minutes = parseInt(parts[0], 10);
+  const seconds = parts[1];
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return hours + ':' + String(remainingMinutes).padStart(2, '0') + ':' + seconds;
+}
+
+/**
+ * Build a responsive <img> tag. SPEC.md §8.3.
+ *
+ * The browser is given three sizes and picks whichever suits the screen it is
+ * on. width and height are always present so the page never jumps around as
+ * images load.
+ *
+ * @param {object} record   From the build's image list: { width, height, outputs }
+ * @param {object} options  { alt, eager, sizes }
+ */
+function image(record, options) {
+  const opts = options || {};
+  if (!record) return '';
+
+  const outputs = record.outputs;
+  const largest = outputs[outputs.length - 1];
+
+  // Display width/height describe the shape, not the file actually loaded.
+  const displayWidth = largest.width;
+  const displayHeight = Math.round(largest.width * record.height / record.width);
+
+  // Prefer the 1200px file as the default source, or the largest if smaller.
+  const preferred = outputs.filter(function (o) { return o.width <= 1200; }).pop() || outputs[0];
+
+  const srcset = outputs.map(function (o) {
+    return '/m/' + o.file + ' ' + o.width + 'w';
+  }).join(', ');
+
+  // The first image on a page is loaded immediately; everything below the fold
+  // waits until the visitor scrolls near it.
+  const loadingAttrs = opts.eager
+    ? 'loading="eager" fetchpriority="high"'
+    : 'loading="lazy"';
+
+  return '<img src="/m/' + preferred.file + '"' +
+    ' srcset="' + srcset + '"' +
+    ' sizes="' + (opts.sizes || '(max-width: 700px) 100vw, 896px') + '"' +
+    ' width="' + displayWidth + '" height="' + displayHeight + '"' +
+    ' alt="' + escapeHtml(opts.alt || '') + '"' +
+    ' ' + loadingAttrs + ' decoding="async">';
+}
+
+// One row of the work manifest: title on the left, client / year / timecode on
+// the right. The whole row is the click target. SPEC.md §9.2.
+function manifestRow(project) {
+  return [
+    '<li class="row">',
+    '<a class="row-link" href="/work/' + escapeHtml(project.slug) + '/">',
+    '<span class="row-title">' + escapeHtml(project.title) + '</span>',
+    '<span class="row-meta">',
+    '<span class="row-client">' + escapeHtml(project.client) + '</span>',
+    '<span class="row-year">' + escapeHtml(project.year) + '</span>',
+    '<span class="row-runtime">' + escapeHtml(toTimecode(project.runtime)) + '</span>',
+    '</span>',
+    '</a>',
+    '</li>',
+  ].join('');
+}
+
 // The registration mark — SPEC.md §10.10.
 // A printer's crosshair: a circle of radius 5 with a 1px stroke, plus lines
 // extending 2px past the circle on all four sides. 14x14, drawn in currentColor
@@ -68,8 +158,9 @@ function layout(site, page) {
     ? escapeHtml(page.title) + ' — ' + escapeHtml(site.name)
     : escapeHtml(site.name);
 
-  // Descriptions are capped at 160 characters — SPEC.md §14.1.
-  const description = escapeHtml(String(page.description || site.tagline).slice(0, 160));
+  // Descriptions are capped at 160 characters — SPEC.md §14.1. Cut at the
+  // last whole word rather than mid-word, and mark the cut with an ellipsis.
+  const description = escapeHtml(truncate(String(page.description || site.tagline), 160));
   const ogImage = page.ogImage ? site.domain + page.ogImage : '';
 
   return [
@@ -88,7 +179,18 @@ function layout(site, page) {
     '<meta property="og:url" content="' + escapeHtml(canonical) + '">',
     '<meta name="twitter:card" content="summary_large_image">',
     '<meta name="theme-color" content="#EDEBE4">',
+    // Lets a feed reader find the notes feed from any page on the site.
+    '<link rel="alternate" type="application/rss+xml" title="' + escapeHtml(site.name) + ' — Notes" href="/feed.xml">',
+    // Tell the browser to start fetching the two fonts immediately, rather
+    // than waiting until it has read the stylesheet. SPEC.md §10.3.
+    // Only the "latin" files are preloaded: the "-ext" files cover accents
+    // most pages never use, so they load on demand instead of on every visit.
+    '<link rel="preload" as="font" type="font/woff2" href="/f/serif-var.woff2" crossorigin>',
+    '<link rel="preload" as="font" type="font/woff2" href="/f/mono-400.woff2" crossorigin>',
     '<link rel="stylesheet" href="/site.css">',
+    // The only JavaScript on the site. "defer" means it never blocks the page
+    // from rendering, and it runs after the HTML is in place. SPEC.md §12.2.
+    '<script src="/video.js" defer></script>',
     page.head || '',
     '</head>',
     '<body>',
@@ -117,4 +219,12 @@ function layout(site, page) {
   ].filter(function (line) { return line !== ''; }).join('\n');
 }
 
-module.exports = { layout: layout, escapeHtml: escapeHtml, REGISTRATION_MARK: REGISTRATION_MARK };
+module.exports = {
+  layout: layout,
+  escapeHtml: escapeHtml,
+  plainText: plainText,
+  toTimecode: toTimecode,
+  image: image,
+  manifestRow: manifestRow,
+  REGISTRATION_MARK: REGISTRATION_MARK,
+};

@@ -11,3 +11,5 @@ Body in markdown. Headings, paragraphs, lists, links, images.
 
 Images reference `media/notes/<slug>/filename.jpg` and are processed
 identically to project stills.
+
+![A placeholder frame](media/notes/example-note/frame.jpg)
