@@ -34,7 +34,15 @@ function home(site, projects, notes) {
   const featured = projects.filter(function (project) { return project.featured === true; });
 
   const body = [
-    '<h1 class="name">' + escapeHtml(site.name) + '</h1>',
+    // The name is still a real <h1> containing real text — screen readers read
+    // it and search engines index it exactly as before. The signature sits on
+    // top of that text visually. It is marked aria-hidden because it is a
+    // picture of the same words, and hearing them twice would be worse than
+    // not hearing them at all.
+    '<h1 class="name">' +
+      '<span class="signature" aria-hidden="true"></span>' +
+      '<span class="vis-hidden">' + escapeHtml(site.name) + '</span>' +
+    '</h1>',
     '<p class="role">' + escapeHtml(site.role) + '<span class="sep" aria-hidden="true"> · </span>' + escapeHtml(site.location) + '</p>',
     '<p class="tagline">' + escapeHtml(site.tagline) + '</p>',
     '<hr>',
@@ -48,7 +56,10 @@ function home(site, projects, notes) {
   return {
     path: '/',
     title: null,                 // the homepage title is just the site name
-    description: site.tagline,
+    // The homepage has no summary of its own, so its search-result snippet is
+    // built from the details in site.json. The tagline alone is too short to
+    // tell a stranger who you are. Nothing here is shown on the page itself.
+    description: site.name + ' — ' + site.role + ', ' + site.location + '. ' + site.tagline,
     ogType: 'website',
     body: body,
   };

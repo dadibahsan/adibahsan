@@ -315,6 +315,55 @@ main { padding-top: var(--s8); }          /* major block — §10.4 */
 
 .name { margin-bottom: var(--s3); }
 
+/* Text that is read aloud by screen readers and indexed by search engines,
+   but not shown on screen. Used for the real name inside the <h1> on the
+   homepage, where a picture of the signature is shown in its place. */
+.vis-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---- The homepage signature -------------------------------------
+   Two layers stacked in one box.
+
+   Underneath sits wordmark-static.webp: the finished signature at full
+   detail. It is what stays on the screen, and it is all a visitor ever
+   sees if the animation is slow to arrive or never arrives at all.
+
+   On top, the ::before layer plays wordmark.webp once — the signature
+   drawing itself on — then fades away, revealing the sharper still
+   beneath. The fade is timed to start comfortably after the animation
+   has finished, so a slow connection degrades to simply showing the
+   finished signature rather than cutting the drawing short.
+
+   The box is sized in advance from the artwork's own proportions, so
+   nothing on the page moves as the images load. Neither file blocks
+   the page from painting.                                            */
+.signature {
+  display: block;
+  position: relative;
+  width: 22.5rem;              /* 360px — the artwork's natural size */
+  max-width: 100%;
+  aspect-ratio: 360 / 99;
+  background: url("/wordmark-static.webp") no-repeat left center / contain;
+}
+
+.signature::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("/wordmark.webp") no-repeat left center / contain;
+  animation: signature-settle 300ms linear 1500ms forwards;
+}
+
+@keyframes signature-settle {
+  to { opacity: 0; }
+}
+
 .role {
   font-family: var(--mono);
   font-size: 0.8125rem;
@@ -713,7 +762,17 @@ figure { margin: 0; }
    ================================================================ */
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition-duration: 0.01ms !important; }
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  /* For anyone who has asked their system for less motion, the signature is
+     shown as a still image and never moves. Removing the layer entirely rather
+     than hiding it means the animation file is never downloaded either — so
+     they also save the download. */
+  .signature::before { content: none; }
 }
 
 
@@ -731,6 +790,18 @@ figure { margin: 0; }
 
   .site-head nav,
   .v-play { display: none; }
+
+  /* On paper the signature is dropped and the name is set as type instead.
+     The artwork carries its own background colour, which would print as a
+     grey slab on white. */
+  .signature { display: none; }
+
+  .vis-hidden {
+    position: static;
+    width: auto;
+    height: auto;
+    clip-path: none;
+  }
 
   /* Images print in full colour, not desaturated. */
   img { filter: none; }

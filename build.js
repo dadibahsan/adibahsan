@@ -641,6 +641,18 @@ function feedXml(site, notes) {
     '</rss>\n';
 }
 
+// Cloudflare Pages reads this file to decide what to serve when a URL matches
+// no real page. Without it, a mistyped address returns an empty 404 and the
+// visitor sees the browser's own grey error screen instead of our page.
+//
+// The "/*" rule only ever applies to addresses that match nothing else — real
+// pages, images and fonts are served before redirects are considered — so this
+// cannot swallow a page that exists. The trailing 404 keeps the correct
+// "not found" status, which matters so search engines drop dead links.
+function redirectsFile() {
+  return '/*  /404.html  404\n';
+}
+
 // Cloudflare Pages reads this file and sets these response headers.
 // Images and fonts never change once published — their filenames carry the
 // size — so they can be cached for a year. HTML changes whenever you rebuild,
@@ -725,6 +737,29 @@ async function build() {
   // --- Step 4: copy the static files across. SPEC.md §8.2 (4) ---
   writeFile('site.css', fs.readFileSync(path.join(SRC, 'site.css'), 'utf8'));
 
+  // The browser-tab icon: the registration mark, in the site's own colours.
+  // Modern browsers use the SVG; the PNGs cover older Safari and the icon
+  // shown when someone saves the site to a phone home screen.
+  const faviconSvg = fs.readFileSync(path.join(SRC, 'favicon.svg'));
+  writeFile('favicon.svg', faviconSvg);
+  for (const icon of [['favicon-32.png', 32], ['apple-touch-icon.png', 180]]) {
+    const png = await sharp(faviconSvg, { density: 384 })
+      .resize(icon[1], icon[1])
+      .png()
+      .toBuffer();
+    writeFile(icon[0], png);
+  }
+
+  // The homepage wordmark: a hand-drawn signature that draws itself on.
+  // Two files, both made once from the After Effects render and committed to
+  // src/ — the build only copies them, so no video tooling is needed to build
+  // the site. wordmark-static.webp is the finished signature at full detail and
+  // is what stays on screen; wordmark.webp is the one-second animation that
+  // plays over it and then fades away. Together they are under the 80 KB
+  // budget. See src/site.css for how the two are layered.
+  for (const asset of ['wordmark.webp', 'wordmark-static.webp']) {
+    writeFile(asset, fs.readFileSync(path.join(SRC, asset)));
+  }
   // The one and only JavaScript file on the site. SPEC.md §12.
   const videoJs = fs.readFileSync(path.join(SRC, 'video.js'), 'utf8');
   writeFile('video.js', videoJs);
@@ -879,6 +914,7 @@ async function build() {
   writeFile('robots.txt', robotsTxt(site));
   writeFile('feed.xml', feedXml(site, notes));
   writeFile('_headers', headersFile());
+  writeFile('_redirects', redirectsFile());
 
   // --- Step 8: the report. SPEC.md §8.2 (8) ---
   const htmlPages = written.filter(function (e) { return e.file.endsWith('.html'); });

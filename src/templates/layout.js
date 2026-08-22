@@ -179,6 +179,11 @@ function layout(site, page) {
     '<meta property="og:url" content="' + escapeHtml(canonical) + '">',
     '<meta name="twitter:card" content="summary_large_image">',
     '<meta name="theme-color" content="#EDEBE4">',
+    // The browser-tab icon. Without these, browsers ask for /favicon.ico,
+    // fail to find it, and show a blank page icon in the tab.
+    '<link rel="icon" href="/favicon.svg" type="image/svg+xml">',
+    '<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">',
+    '<link rel="apple-touch-icon" href="/apple-touch-icon.png">',
     // Lets a feed reader find the notes feed from any page on the site.
     '<link rel="alternate" type="application/rss+xml" title="' + escapeHtml(site.name) + ' — Notes" href="/feed.xml">',
     // Tell the browser to start fetching the two fonts immediately, rather
