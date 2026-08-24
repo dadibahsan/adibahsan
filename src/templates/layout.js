@@ -21,9 +21,23 @@ function escapeHtml(value) {
 
 // Strip the HTML tags out of a string, for places that need plain text —
 // the <title> tag, meta descriptions, the RSS feed.
+//
+// Entities have to be turned back into real characters here. The summary has
+// already been through the markdown converter, which writes an apostrophe as
+// "&#39;". Left alone, the escaping step that follows would turn that into
+// "&amp;#39;" and a search result would literally read "don&#39;t speak".
 function plainText(html) {
   return String(html)
     .replace(/<[^>]*>/g, '')
+    .replace(/&#(\d+);/g, function (_, code) { return String.fromCharCode(Number(code)); })
+    .replace(/&#[xX]([0-9a-fA-F]+);/g, function (_, code) { return String.fromCharCode(parseInt(code, 16)); })
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    // "&amp;" last, so "&amp;lt;" becomes "&lt;" and not "<".
+    .replace(/&amp;/g, '&')
     .replace(/\s+/g, ' ')
     .trim();
 }

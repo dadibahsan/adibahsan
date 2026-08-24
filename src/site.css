@@ -97,13 +97,11 @@
   --s9: 6rem;     --s10: 8rem;
 
   /* Layout — SPEC.md §10.5.
-     --w-text is the reading column. What matters is the "measure": how many
-     characters fit on a line, which should stay around 65 (SPEC.md §19, §24).
-     The spec suggests 36rem, calibrated for Newsreader. Faustina is a narrower
-     face, so 36rem fitted about 78 characters — too wide to read comfortably.
-     Measured on the built pages, 30rem lands at roughly 67. If you ever change
-     the serif, re-check the measure rather than trusting this number. */
-  --w-text:  30rem;   /* the reading column, ~67 characters with this serif */
+     --w-text is the reading column: narrow text against wide media, both
+     aligned to the same left edge. Keep this at 36rem. Narrowing it to chase
+     a shorter line length leaves the summary stranded in a thin column beside
+     a full-width video, which reads as a mistake rather than as a choice. */
+  --w-text:  36rem;   /* the reading column */
   --w-media: 56rem;   /* video and stills */
   --gutter:  1.5rem;  /* 2.5rem at 700px and up */
 }
@@ -821,6 +819,10 @@ figure { margin: 0; }
 
   /* Images print in full colour, not desaturated. */
   img { filter: none; }
+
+  /* A film prints as its poster frame. Drop the dark backing behind it, which
+     would otherwise print as a solid black rectangle. */
+  .v video { background: none; }
 
   /* Expose where a link actually goes, since it cannot be clicked. */
   a[href^="http"]::after {

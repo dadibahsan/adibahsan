@@ -1,32 +1,3 @@
-/* site.css — the entire stylesheet for the site, in one file.
-   SPEC.md §10 is the design system this implements.
-
-   Two rules that never change:
-   - Every colour on the site is one of the six tokens below. No others.
-   - Every margin and padding is one of --s1 .. --s10. No others.
-
-   Written mobile-first: the plain rules are the small-screen design, and the
-   single @media block near the bottom (700px, SPEC.md §10.6) adjusts for
-   larger screens. There is exactly one breakpoint on this site. */
-
-
-/* ================================================================
-   FONTS                                            SPEC.md §10.3
-   Self-hosted. No request ever goes to Google.
-
-   In use: Faustina (serif, variable 300-700) and IBM Plex Mono 400.
-   SPEC.md suggests Newsreader for the serif and marks the choice a
-   TASTE CALL. Newsreader is swapped out here only because it cannot
-   fit inside the 80 KB font budget in SPEC.md §13 without dropping
-   the latin-ext characters that §10.3 requires. To change the serif,
-   replace the two serif-var files in src/fonts/ and rebuild — nothing
-   else in this file or the templates needs to change.
-
-   Two files per family: the "latin" file covers everyday English and
-   Western European text; the "-ext" file covers Central and Eastern
-   European accents and only downloads if a page actually uses one.
-   ================================================================ */
-
 @font-face {
   font-family: "SiteSerif";
   src: url("/f/serif-var.woff2") format("woff2-variations");
@@ -71,89 +42,52 @@
     U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
-
-/* ================================================================
-   TOKENS
-   ================================================================ */
-
 :root {
-  /* Colour — SPEC.md §10.2. Six tokens, no more.
-     Pure black and pure white appear nowhere. */
-  --paper:      #EDEBE4;  /* background — bone, cool-neutral newsprint */
-  --ink:        #1A1917;  /* body text — near-black, faintly warm */
-  --ink-muted:  #6B6862;  /* metadata, labels, dates */
-  --rule:       #C9C5BB;  /* hairlines, 1px */
-  --mark:       #B0281F;  /* registration red */
-  --paper-lift: #F4F2EC;  /* image placeholder background only */
 
-  /* Type — SPEC.md §10.3. Fallbacks are metrically close to the real
-     faces, so the swap when the webfont arrives is barely visible. */
+  --paper:      #EDEBE4;
+  --ink:        #1A1917;
+  --ink-muted:  #6B6862;
+  --rule:       #C9C5BB;
+  --mark:       #B0281F;
+  --paper-lift: #F4F2EC;
+
   --serif: "SiteSerif", Charter, "Bitstream Charter", Georgia, serif;
   --mono:  "SiteMono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  /* Spacing — SPEC.md §10.4. Nothing outside this scale. */
   --s1: 0.25rem;  --s2: 0.5rem;   --s3: 0.75rem;  --s4: 1rem;
   --s5: 1.5rem;   --s6: 2rem;     --s7: 3rem;     --s8: 4rem;
   --s9: 6rem;     --s10: 8rem;
 
-  /* Layout — SPEC.md §10.5.
-     --w-text is the reading column. What matters is the "measure": how many
-     characters fit on a line, which should stay around 65 (SPEC.md §19, §24).
-     The spec suggests 36rem, calibrated for Newsreader. Faustina is a narrower
-     face, so 36rem fitted about 78 characters — too wide to read comfortably.
-     Measured on the built pages, 30rem lands at roughly 67. If you ever change
-     the serif, re-check the measure rather than trusting this number. */
-  --w-text:  30rem;   /* the reading column, ~67 characters with this serif */
-  --w-media: 56rem;   /* video and stills */
-  --gutter:  1.5rem;  /* 2.5rem at 700px and up */
+  --w-text:  36rem;
+  --w-media: 56rem;
+  --gutter:  1.5rem;
 }
 
-
-/* ================================================================
-   BASE
-   ================================================================ */
-
-/* No border-radius anywhere on this site. SPEC.md §10.7. */
 * { border-radius: 0; }
 
 *, *::before, *::after { box-sizing: border-box; }
 
-/* Root font-size stays at the browser default (usually 16px). Never
-   override it — doing so overrides the visitor's own accessibility
-   settings. SPEC.md §10.3. */
 html { -webkit-text-size-adjust: 100%; }
 
 body {
   margin: 0;
-  padding: var(--s6) var(--gutter) var(--s9);   /* §10.4 page top / bottom */
+  padding: var(--s6) var(--gutter) var(--s9);
   background: var(--paper);
   color: var(--ink);
   font-family: var(--serif);
   font-size: 1.0625rem;
   font-weight: 400;
   line-height: 1.65;
-  /* A word longer than the column — a long email address, a file path — wraps
-     instead of pushing the page sideways. Matters most when someone has set
-     their browser's text size to 200%. SPEC.md §15. */
+
   overflow-wrap: break-word;
 }
 
-/* The page container is centred at media width. Text blocks inside it are
-   narrower but align to the container's LEFT edge, not centred within it —
-   that asymmetry is what stops the page reading as a default document.
-   SPEC.md §10.5. */
 body > header,
 body > main,
 body > footer {
   max-width: var(--w-media);
   margin-inline: auto;
 }
-
-
-/* ================================================================
-   TYPE SCALE                                       SPEC.md §10.3
-   Mobile values here; desktop values in the 700px block below.
-   ================================================================ */
 
 h1, h2, h3 { margin: 0; font-family: var(--serif); }
 
@@ -180,7 +114,6 @@ h3 {
 p { margin: 0 0 var(--s4); max-width: var(--w-text); }
 p:last-child { margin-bottom: 0; }
 
-/* Monospace carries every number and label on the site. */
 .meta,
 .mono {
   font-family: var(--mono);
@@ -190,7 +123,6 @@ p:last-child { margin-bottom: 0; }
   font-variant-numeric: tabular-nums;
 }
 
-/* Uppercase is used for mono labels only — never for headings. §10.3 */
 .label {
   font-family: var(--mono);
   font-size: 0.75rem;
@@ -201,7 +133,6 @@ p:last-child { margin-bottom: 0; }
   color: var(--ink-muted);
 }
 
-/* The hairline is the main structural device on this site. */
 hr {
   height: 0;
   margin: var(--s7) 0;
@@ -209,36 +140,22 @@ hr {
   border-top: 1px solid var(--rule);
 }
 
-
-/* ================================================================
-   LINKS AND FOCUS                                  SPEC.md §10.7
-   Real underlines everywhere. No buttons, no pills, no chevrons.
-   ================================================================ */
-
 a {
   color: var(--ink);
   text-decoration: underline;
   text-underline-offset: 0.18em;
   text-decoration-thickness: 1px;
   text-decoration-color: var(--rule);
-  transition: text-decoration-color 120ms ease-out;   /* §10.8 */
+  transition: text-decoration-color 120ms ease-out;
 }
 
 a:hover { text-decoration-color: var(--mark); }
-a:visited { color: var(--ink); }                       /* no purple */
+a:visited { color: var(--ink); }
 
 a:focus-visible {
   outline: 2px solid var(--mark);
   outline-offset: 3px;
 }
-
-
-/* ================================================================
-   IMAGES — THE SIGNATURE                           SPEC.md §10.1
-   Every image rests desaturated and slightly contrast-lifted, like
-   printed matter, and resolves to full colour on hover or keyboard
-   focus over 180ms. Nothing else on the site moves, ever.
-   ================================================================ */
 
 img {
   display: block;
@@ -256,17 +173,9 @@ figure:focus-within img {
   filter: grayscale(0) contrast(1);
 }
 
-/* On touch devices there is no hover, so images render in full colour
-   permanently rather than never resolving. */
 @media (hover: none) {
   img { filter: grayscale(0) contrast(1); }
 }
-
-
-/* ================================================================
-   HEADER                                            SPEC.md §9.0
-   Plain text on a hairline rule. It does not stick, shrink or animate.
-   ================================================================ */
 
 .site-head {
   display: flex;
@@ -281,7 +190,6 @@ figure:focus-within img {
   letter-spacing: 0.02em;
 }
 
-/* Name plus registration mark, linking home. */
 .wordmark {
   display: inline-flex;
   align-items: center;
@@ -291,8 +199,6 @@ figure:focus-within img {
 
 .wordmark:hover span { text-decoration: underline; text-decoration-color: var(--mark); }
 
-/* The registration mark is the only graphic element on the site, and one
-   of only two places --mark red is allowed to appear. SPEC.md §10.10. */
 .mark {
   flex: none;
   color: var(--mark);
@@ -301,23 +207,14 @@ figure:focus-within img {
 .site-head nav a,
 .site-head nav [aria-current] { text-decoration-color: var(--rule); }
 
-/* The current page renders as plain text, not a link. */
 .site-head nav [aria-current] { color: var(--ink-muted); }
 
 .sep { color: var(--ink-muted); }
 
-
-/* ================================================================
-   HOME                                              SPEC.md §9.1
-   ================================================================ */
-
-main { padding-top: var(--s8); }          /* major block — §10.4 */
+main { padding-top: var(--s8); }
 
 .name { margin-bottom: var(--s3); }
 
-/* Text that is read aloud by screen readers and indexed by search engines,
-   but not shown on screen. Used for the real name inside the <h1> on the
-   homepage, where a picture of the signature is shown in its place. */
 .vis-hidden {
   position: absolute;
   width: 1px;
@@ -327,26 +224,10 @@ main { padding-top: var(--s8); }          /* major block — §10.4 */
   white-space: nowrap;
 }
 
-/* ---- The homepage signature -------------------------------------
-   Two layers stacked in one box.
-
-   Underneath sits wordmark-static.webp: the finished signature at full
-   detail. It is what stays on the screen, and it is all a visitor ever
-   sees if the animation is slow to arrive or never arrives at all.
-
-   On top, the ::before layer plays wordmark.webp once — the signature
-   drawing itself on — then fades away, revealing the sharper still
-   beneath. The fade is timed to start comfortably after the animation
-   has finished, so a slow connection degrades to simply showing the
-   finished signature rather than cutting the drawing short.
-
-   The box is sized in advance from the artwork's own proportions, so
-   nothing on the page moves as the images load. Neither file blocks
-   the page from painting.                                            */
 .signature {
   display: block;
   position: relative;
-  width: 22.5rem;              /* 360px — the artwork's natural size */
+  width: 22.5rem;
   max-width: 100%;
   aspect-ratio: 360 / 99;
   background: url("/wordmark-static.webp") no-repeat left center / contain;
@@ -380,27 +261,17 @@ main { padding-top: var(--s8); }          /* major block — §10.4 */
 
 .more { margin-top: var(--s6); }
 
-
-/* ================================================================
-   MANIFEST ROWS                                     SPEC.md §9.2
-   Title on the left, client / year / timecode on the right in mono,
-   tabular figures, a hairline between rows. No thumbnails: the page
-   reads as a catalogue, not a portfolio grid.
-   ================================================================ */
-
 .manifest {
   list-style: none;
   margin: var(--s5) 0 0;
   padding: 0;
 }
 
-/* Hairline *between* rows only. */
 .row + .row { border-top: 1px solid var(--rule); }
 
-/* The whole row is the click target. */
 .row-link {
   display: flex;
-  flex-direction: column;      /* mobile: metadata drops to a second line */
+  flex-direction: column;
   gap: var(--s1);
   padding: var(--s3) 0;
   text-decoration: none;
@@ -430,13 +301,6 @@ main { padding-top: var(--s8); }          /* major block — §10.4 */
   color: var(--ink-muted);
 }
 
-
-/* ================================================================
-   PROSE — any block of written markdown       SPEC.md §9.5, §9.6
-   Text sits in the narrow reading column; images break out of it
-   and run the full media width.
-   ================================================================ */
-
 .prose { margin-top: var(--s5); }
 
 .prose > * { max-width: var(--w-text); }
@@ -463,13 +327,6 @@ main { padding-top: var(--s8); }          /* major block — §10.4 */
 
 figure { margin: 0; }
 
-
-/* ================================================================
-   PROJECT PAGE                                      SPEC.md §9.3
-   ================================================================ */
-
-/* The metadata block: YEAR / RUNTIME / LANGUAGE / CLIENT / ROLE.
-   Labels are uppercase mono in muted grey; values are in ink. */
 .meta-list {
   margin: var(--s5) 0 0;
   max-width: var(--w-text);
@@ -504,12 +361,10 @@ figure { margin: 0; }
   color: var(--ink);
 }
 
-/* Stills: full media width, stacked, one spacing unit apart. */
 .stills { margin-top: var(--s6); }
 .stills img { margin-bottom: var(--s5); }
 .stills img:last-child { margin-bottom: 0; }
 
-/* Credits: a plain mono list. */
 .credits {
   list-style: none;
   margin: var(--s3) 0 0;
@@ -536,7 +391,6 @@ figure { margin: 0; }
 
 .external { margin-top: var(--s5); }
 
-/* Previous / next, at the foot of a project or a note. */
 .prevnext {
   display: flex;
   flex-wrap: wrap;
@@ -549,14 +403,6 @@ figure { margin: 0; }
 }
 
 .prevnext .next { margin-left: auto; text-align: right; }
-
-
-/* ================================================================
-   VIDEO FACADE                              SPEC.md §11.5, §11.6
-   A poster and a button. No YouTube code loads until it is clicked;
-   src/video.js does the swap. The box holds its 16:9 shape whether
-   the image has arrived or not, so nothing on the page ever jumps.
-   ================================================================ */
 
 .v {
   position: relative;
@@ -578,9 +424,6 @@ figure { margin: 0; }
   border: 0;
 }
 
-/* A self-hosted film, played by the browser's own controls. SPEC.md §23.4.
-   Sized exactly like the YouTube player next to it, so a page with one looks
-   no different from a page with the other. */
 .v video {
   display: block;
   width: 100%;
@@ -588,14 +431,11 @@ figure { margin: 0; }
   background: var(--ink);
 }
 
-/* Only ever seen by a browser that cannot play the file at all. */
 .v-fallback {
   margin: 0;
   padding: var(--s5);
 }
 
-/* A physical button on a deck, not a YouTube play button: a hard-edged
-   64px square, never a circle and never a rounded rectangle. */
 .v-play {
   position: absolute;
   top: 50%;
@@ -623,7 +463,6 @@ figure { margin: 0; }
   outline-offset: 3px;
 }
 
-/* The fallback link shown when JavaScript is switched off. */
 .v noscript {
   position: absolute;
   left: var(--s3);
@@ -631,12 +470,6 @@ figure { margin: 0; }
   font-family: var(--mono);
   font-size: 0.8125rem;
 }
-
-
-/* ================================================================
-   CONTACT                                           SPEC.md §9.7
-   The email, large and in mono. No form: a form implies a server.
-   ================================================================ */
 
 .email {
   margin-top: var(--s5);
@@ -653,12 +486,6 @@ figure { margin: 0; }
   font-size: 0.8125rem;
   letter-spacing: 0.02em;
 }
-
-
-/* ================================================================
-   NOTE ROWS                                    SPEC.md §9.1, §9.4
-   Date in mono, then the title in serif.
-   ================================================================ */
 
 .note-list {
   list-style: none;
@@ -685,7 +512,6 @@ figure { margin: 0; }
   color: var(--ink-muted);
 }
 
-/* The notes index carries a one-line summary under each title. */
 .note-body {
   display: flex;
   flex-direction: column;
@@ -693,11 +519,6 @@ figure { margin: 0; }
 }
 
 .note-summary { color: var(--ink-muted); }
-
-
-/* ================================================================
-   FOOTER                                            SPEC.md §9.0
-   ================================================================ */
 
 .site-foot {
   margin-top: var(--s8);
@@ -714,18 +535,6 @@ figure { margin: 0; }
 .site-foot p:last-child { margin-bottom: 0; }
 .site-foot a { color: var(--ink-muted); }
 
-
-/* ================================================================
-   THE ONE BREAKPOINT                                SPEC.md §10.6
-   700px and up. Wider gutter, larger headings, manifest metadata
-   moves back onto the same line as the title and right-aligns.
-   ================================================================ */
-
-/* 43.75em is 700px at the default text size, so this is the same single
-   breakpoint SPEC.md §10.6 asks for. It is written in em rather than px on
-   purpose: if a visitor sets their browser text to 200%, the breakpoint moves
-   with them, and the wide side-by-side layout waits until there is genuinely
-   room for it instead of pushing the page sideways. SPEC.md §15. */
 @media (min-width: 43.75em) {
   :root { --gutter: 2.5rem; }
 
@@ -739,12 +548,6 @@ figure { margin: 0; }
     gap: var(--s5);
   }
 
-  /* The metadata block holds its columns at a fixed width, so client, year and
-     timecode form a straight edge down the page. It is allowed to shrink as a
-     block, though: if a visitor has scaled their text right up and the three
-     columns cannot sit side by side, they wrap onto separate lines instead of
-     pushing the page sideways. Alignment is kept in the normal case; nothing
-     ever overflows in the extreme one. */
   .row-meta {
     flex: 0 1 auto;
     min-width: 0;
@@ -772,11 +575,6 @@ figure { margin: 0; }
   .email { font-size: 1.375rem; }
 }
 
-
-/* ================================================================
-   MOTION POLICY                                     SPEC.md §10.8
-   ================================================================ */
-
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     transition-duration: 0.01ms !important;
@@ -784,22 +582,11 @@ figure { margin: 0; }
     animation-iteration-count: 1 !important;
   }
 
-  /* For anyone who has asked their system for less motion, the signature is
-     shown as a still image and never moves. Removing the layer entirely rather
-     than hiding it means the animation file is never downloaded either — so
-     they also save the download. */
   .signature::before { content: none; }
 }
 
-
-/* ================================================================
-   PRINT                                             SPEC.md §10.9
-   ================================================================ */
-
 @media print {
-  /* --paper becomes white for print. Redefining the token rather than
-     hard-coding white keeps the rule that every colour on this site comes
-     from a token and lives in exactly one place. */
+
   :root { --paper: #FFFFFF; }
 
   body { padding: 0; }
@@ -807,9 +594,6 @@ figure { margin: 0; }
   .site-head nav,
   .v-play { display: none; }
 
-  /* On paper the signature is dropped and the name is set as type instead.
-     The artwork carries its own background colour, which would print as a
-     grey slab on white. */
   .signature { display: none; }
 
   .vis-hidden {
@@ -819,10 +603,10 @@ figure { margin: 0; }
     clip-path: none;
   }
 
-  /* Images print in full colour, not desaturated. */
   img { filter: none; }
 
-  /* Expose where a link actually goes, since it cannot be clicked. */
+  .v video { background: none; }
+
   a[href^="http"]::after {
     content: " (" attr(href) ")";
     font-size: 0.75em;

@@ -4,37 +4,37 @@
     "title": "Athar",
     "client": "Yacine Tareb",
     "year": 2026,
-    "runtime": "4:12",
-    "language": "English",
+    "runtime": "41:46",
+    "language": "French",
     "role": "Director, Animation, Edit",
     "video": "Yacine Athar Series.mp4",
     "poster": "poster.jpg",
     "featured": true,
-    "summary": "Two to four sentences describing the problem this piece had to solve. Not the software used — the constraint, the brief, the thing that made it hard.",
-    "technical": "One paragraph on how it was actually made. Pipeline, tools, the workaround you had to invent.",
+    "summary": "A script arrives in French, which I don't speak, and leaves as a documentary. About the Mongol invasions and what they ended 800 years ago. There's no footage of any of it, obviously, and no budget to shoot reenactments, so every frame gets built. Which means every frame has to hold up when someone looks at it closely.",
+    "technical": "Most of the work happens before any image exists. I go through the script looking for where it turns — where the tension actually breaks — and then build out a Narrative Map, which is a document that takes the bilingual script line by line and assigns each one a visual plan, an audio plan, a mood. Nothing gets made until that's done. Ahnaf Tahmid Rafid works from the map on art direction and illustration, generating scenes, while I build the timeline in parallel — score, bilingual subtitles from JSON, the composition set up and waiting. Then the assets come in and each scene gets separated into layers across Z depth and rebuilt in 3D. That's where a still becomes a shot; camera movement, atmosphere, effects stacked in. Picture lock goes over to Premiere for music and sound design. Six months in and every episode still starts from zero.",
     "stills": [
       {
         "file": "01.jpg",
-        "alt": "Description of the first frame"
+        "alt": "Four arab standing against sunset"
       },
       {
         "file": "02.jpg",
-        "alt": "Description of the second frame"
+        "alt": "Bloodline of Prophet (SAW)"
       },
       {
         "file": "03.jpg",
-        "alt": "Description of the third frame"
+        "alt": "Poster"
       }
     ],
     "credits": [
       {
-        "role": "Example role",
-        "name": "Example Name"
+        "role": "ART DIRECTION AND ILLUSTRATION",
+        "name": "Ahnaf Tahmid Rafid"
       }
     ],
     "link": {
-      "label": "Watch on Example Platform",
-      "url": "https://example.com/"
+      "label": "Yacine Tareb's Youtube",
+      "url": "https://www.youtube.com/@yacinetareb"
     }
   },
   {

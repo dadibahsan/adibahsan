@@ -192,6 +192,9 @@ const YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/;
 // A runtime is "4:12" or "12:30" — minutes, a colon, two digits of seconds.
 const RUNTIME = /^\d{1,3}:[0-5]\d$/;
 
+// Alt text that says nothing. Read aloud, these are worse than silence.
+const PLACEHOLDER_ALT = /^(n\/?a|na|none|-+|\.+|image|images|img|photo|picture|still|frame|tbd|todo|xxx*|test|alt|description|untitled)$/i;
+
 // Formats a browser can play from a plain file. MP4 is the safe choice.
 // SPEC.md §7.2, §23.4.
 const VIDEO_FILE = /\.(mp4|webm|mov)$/i;
@@ -303,6 +306,26 @@ function loadProjects() {
           } else {
             // Cloudflare Pages refuses to serve any single file over 25 MiB, so
             // warn well before that. SPEC.md §23.4.
+            // "runtime" is the length of the work, not of this file. Hosting a
+            // short extract of a long piece is normal and expected — a 41
+            // minute film cannot fit under Cloudflare's 25 MB ceiling — so a
+            // file SHORTER than the runtime is never flagged.
+            //
+            // A file LONGER than the stated runtime is different: the work
+            // cannot be shorter than the thing you are showing of it, so that
+            // is a genuine contradiction and worth saying out loud.
+            const actual = videoDurationSeconds(videoPath);
+            const declared = runtimeSeconds(project.runtime);
+            if (actual !== null && declared !== null && actual > declared + 2) {
+              const shown = function (s) {
+                const m = Math.floor(s / 60);
+                return m + ':' + String(Math.round(s - m * 60)).padStart(2, '0');
+              };
+              warnings.push('⚠ Entry "' + project.slug + '": ' + project.video + ' runs ' + shown(actual) +
+                ', which is longer than the ' + project.runtime + ' given as the runtime. ' +
+                'Check whether "runtime" is right.');
+            }
+
             const megabytes = fs.statSync(videoPath).size / (1024 * 1024);
             if (megabytes > 24) {
               warnings.push('⚠ Entry "' + project.slug + '": video "' + project.video + '" is ' + megabytes.toFixed(1) +
@@ -331,6 +354,13 @@ function loadProjects() {
     normaliseStills(project).forEach(function (still) {
       if (still.generatedAlt) {
         warnings.push('⚠ Entry "' + project.slug + '": still "' + still.file + '" has no alt text. Real alt text helps blind visitors and search.');
+      } else if (PLACEHOLDER_ALT.test(String(still.alt).trim())) {
+        // "N/A", "-", "image", "TODO" and the like are worse than nothing: a
+        // screen reader reads them aloud in place of the picture. Describe
+        // what is in the frame, or delete the alt line and let the build
+        // generate a plain one.
+        warnings.push('⚠ Entry "' + project.slug + '": still "' + still.file + '" has "' + still.alt +
+          '" as its description, which a screen reader will read out loud. Describe what is in the frame instead.');
       }
     });
   });
@@ -341,6 +371,118 @@ function loadProjects() {
 // Stills come in two shapes — a plain filename, or an object with alt text.
 // This turns both into the same thing so the rest of the code has one case to
 // handle. SPEC.md §7.2.
+/* Remove /* ... *​/ comments from a stylesheet.
+ *
+ * Written as a scan rather than a regular expression because a comment marker
+ * can legitimately appear inside a quoted value — a url("a/*b.png") — and a
+ * regular expression would happily cut the file in half there.
+ */
+function stripCssComments(css) {
+  let out = '';
+  let i = 0;
+  let quote = null;
+
+  while (i < css.length) {
+    const ch = css[i];
+
+    if (quote) {
+      out += ch;
+      if (ch === '\\') { out += css[i + 1] || ''; i += 2; continue; }
+      if (ch === quote) quote = null;
+      i++;
+      continue;
+    }
+
+    if (ch === '"' || ch === "'") { quote = ch; out += ch; i++; continue; }
+
+    if (ch === '/' && css[i + 1] === '*') {
+      const end = css.indexOf('*/', i + 2);
+      if (end === -1) break;                 // unterminated: drop the remainder
+      i = end + 2;
+      continue;
+    }
+
+    out += ch;
+    i++;
+  }
+
+  // Tidy the blank lines the comments leave behind, without reflowing rules.
+  return out
+    .split('\n')
+    .map(function (line) { return line.replace(/[ \t]+$/, ''); })
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/^\n+/, '');
+}
+
+/* How long is this film, actually?
+ *
+ * An .mp4 (and a .mov, which uses the same layout) records its own length in a
+ * small header near the start of the file. Reading it takes no extra software:
+ * the file is a series of labelled boxes, and the one called "mvhd" holds a
+ * timescale and a duration. Divide one by the other and you have seconds.
+ *
+ * This exists so the build can notice when the runtime written in
+ * projects.json does not match the film that is actually there — a mistake
+ * that is otherwise invisible until someone presses play. Returns null for
+ * formats it cannot read, which is never treated as a problem.
+ */
+function videoDurationSeconds(file) {
+  let handle;
+  try {
+    handle = fs.openSync(file, 'r');
+    const size = fs.fstatSync(handle).size;
+
+    // Walk the top-level boxes looking for "moov", then walk inside it for
+    // "mvhd". Only the first megabyte or so is ever touched.
+    function findBox(start, end, wanted) {
+      let offset = start;
+      const header = Buffer.alloc(8);
+      while (offset + 8 <= end) {
+        fs.readSync(handle, header, 0, 8, offset);
+        let boxSize = header.readUInt32BE(0);
+        const type = header.toString('latin1', 4, 8);
+        if (boxSize === 1) {                       // 64-bit size follows
+          const big = Buffer.alloc(8);
+          fs.readSync(handle, big, 0, 8, offset + 8);
+          boxSize = Number(big.readBigUInt64BE(0));
+        }
+        if (boxSize < 8) return null;              // malformed; give up quietly
+        if (type === wanted) return { start: offset, size: boxSize };
+        offset += boxSize;
+      }
+      return null;
+    }
+
+    const moov = findBox(0, size, 'moov');
+    if (!moov) return null;
+    const mvhd = findBox(moov.start + 8, moov.start + moov.size, 'mvhd');
+    if (!mvhd) return null;
+
+    const head = Buffer.alloc(32);
+    fs.readSync(handle, head, 0, 32, mvhd.start + 8);
+    const version = head.readUInt8(0);
+    const timescale = version === 1 ? head.readUInt32BE(20) : head.readUInt32BE(12);
+    const duration = version === 1
+      ? Number(head.readBigUInt64BE(24))
+      : head.readUInt32BE(16);
+
+    if (!timescale || !duration) return null;
+    return duration / timescale;
+  } catch (err) {
+    return null;                                   // unreadable: not an error
+  } finally {
+    if (handle !== undefined) try { fs.closeSync(handle); } catch (err) { /* ignore */ }
+  }
+}
+
+// "4:12" as a number of seconds, for comparing against a real film.
+function runtimeSeconds(runtime) {
+  if (!RUNTIME.test(String(runtime))) return null;
+  const parts = String(runtime).split(':');
+  return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+}
+
 function normaliseStills(project) {
   if (!Array.isArray(project.stills)) return [];
   return project.stills.map(function (still, index) {
@@ -779,7 +921,13 @@ async function build() {
   fs.mkdirSync(DIST, { recursive: true });
 
   // --- Step 4: copy the static files across. SPEC.md §8.2 (4) ---
-  writeFile('site.css', fs.readFileSync(path.join(SRC, 'site.css'), 'utf8'));
+  // src/site.css is heavily commented, because it is the file you are meant to
+  // read and change. Those comments are for you, not for visitors — shipping
+  // them means every page carries them, on every visit. They are stripped on
+  // the way out. Nothing else is touched: the rules, the order and the
+  // formatting are left exactly as written, so the published file is still
+  // readable if you ever look at it. SPEC.md §13.
+  writeFile('site.css', stripCssComments(fs.readFileSync(path.join(SRC, 'site.css'), 'utf8')));
 
   // The browser-tab icon: the registration mark, in the site's own colours.
   // Modern browsers use the SVG; the PNGs cover older Safari and the icon
