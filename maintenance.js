@@ -196,11 +196,36 @@ function page() {
 `;
 }
 
-// Cloudflare Pages: show the holding page for every address on the domain, so
-// a link someone already has to /work/something/ lands here too rather than on
-// a "not found" page or, worse, on a leftover draft page.
-function redirects() {
-  return '/*  /index.html  200\n';
+/* Tell Cloudflare how to serve the site.
+ *
+ * Every address on the domain must land on the holding page, including links
+ * people already have to /work/something/.
+ *
+ * This is done here rather than in a _redirects file on purpose. A catch-all
+ * rule like "/*  /index.html  200" is REJECTED by Cloudflare — it strips
+ * "/index" and ".html" from the destination, which then matches "/*" again,
+ * and it refuses the whole deployment as an infinite loop. A _redirects file
+ * containing that rule is what silently blocked every deployment between
+ * 23 and 25 August 2026.
+ *
+ * "not_found_handling" is the supported way to say the same thing:
+ *   single-page-application -> anything unmatched serves index.html (200)
+ *   404-page                -> anything unmatched serves 404.html (404)
+ *
+ * Maintenance mode wants the first. The real site wants the second, and
+ * build.js writes that value instead.
+ */
+function wranglerConfig() {
+  return JSON.stringify({
+    $schema: 'node_modules/wrangler/config-schema.json',
+    name: 'adibahsan',
+    compatibility_date: '2026-08-20',
+    observability: { enabled: true },
+    assets: {
+      directory: 'dist',
+      not_found_handling: 'single-page-application',
+    },
+  }, null, 2) + '\n';
 }
 
 // Ask every search engine to stay away entirely while the site is unfinished.
@@ -234,13 +259,16 @@ function main() {
 
   const files = [
     ['index.html', page()],
-    ['_redirects', redirects()],
     ['robots.txt', robots()],
     ['_headers', headers()],
   ];
 
   let total = 0;
   for (const [name, contents] of files) total += write(name, contents);
+
+  // wrangler.jsonc sits beside package.json, not inside dist/ — Cloudflare
+  // reads it to decide how to serve the folder.
+  fs.writeFileSync(path.join(ROOT, 'wrangler.jsonc'), wranglerConfig());
 
   console.log('');
   console.log('  MAINTENANCE MODE');
@@ -249,6 +277,7 @@ function main() {
   console.log('  Every address on the site shows it. Search engines are asked to stay away.');
   console.log('');
   files.forEach(function (f) { console.log('    ' + f[0]); });
+  console.log('    ../wrangler.jsonc   (tells Cloudflare to serve the holding page for every address)');
   console.log('');
   console.log('  Total            ' + (total / 1024).toFixed(1) + ' KB');
   console.log('');

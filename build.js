@@ -835,8 +835,27 @@ function feedXml(site, notes) {
 // pages, images and fonts are served before redirects are considered — so this
 // cannot swallow a page that exists. The trailing 404 keeps the correct
 // "not found" status, which matters so search engines drop dead links.
-function redirectsFile() {
-  return '/*  /404.html  404\n';
+// This must NOT be done with a _redirects file. A catch-all rule such as
+// "/*  /404.html  404" is rejected outright: Cloudflare strips "/index" and
+// ".html" from the destination, which then matches "/*" again, and it refuses
+// the entire deployment as an infinite loop. A _redirects file containing that
+// rule silently blocked every deployment between 23 and 25 August 2026 — the
+// site kept serving an old version and nothing said so.
+//
+// "404-page" is the supported way to say the same thing: any address matching
+// no real file serves 404.html with a genuine 404 status, which is what makes
+// search engines drop dead links.
+function wranglerConfig() {
+  return JSON.stringify({
+    $schema: 'node_modules/wrangler/config-schema.json',
+    name: 'adibahsan',
+    compatibility_date: '2026-08-20',
+    observability: { enabled: true },
+    assets: {
+      directory: 'dist',
+      not_found_handling: '404-page',
+    },
+  }, null, 2) + '\n';
 }
 
 // Cloudflare Pages reads this file and sets these response headers.
@@ -1136,7 +1155,9 @@ async function build() {
   writeFile('robots.txt', robotsTxt(site));
   writeFile('feed.xml', feedXml(site, notes));
   writeFile('_headers', headersFile());
-  writeFile('_redirects', redirectsFile());
+  // Sits beside package.json, not inside dist/ — Cloudflare reads it to decide
+  // how to serve the folder.
+  fs.writeFileSync(path.join(ROOT, 'wrangler.jsonc'), wranglerConfig());
 
   // --- Step 8: the report. SPEC.md §8.2 (8) ---
   const htmlPages = written.filter(function (e) { return e.file.endsWith('.html'); });
