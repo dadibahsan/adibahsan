@@ -4,40 +4,110 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Adib Ahsan</title>
-<meta name="description" content="Adib Ahsan — Creative Director, Dhaka. Motion · Film · Design">
-<link rel="canonical" href="https://adibahsan.com/">
-<meta property="og:type" content="website">
-<meta property="og:title" content="Adib Ahsan">
-<meta property="og:description" content="Adib Ahsan — Creative Director, Dhaka. Motion · Film · Design">
-<meta property="og:url" content="https://adibahsan.com/">
-<meta name="twitter:card" content="summary_large_image">
+<meta name="description" content="A new site is on the way.">
+<!-- Keep this page, and the unfinished work behind it, out of search results. -->
+<meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#EDEBE4">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="alternate" type="application/rss+xml" title="Adib Ahsan — Notes" href="/feed.xml">
-<link rel="preload" as="font" type="font/woff2" href="/f/serif-var.woff2" crossorigin>
-<link rel="preload" as="font" type="font/woff2" href="/f/mono-400.woff2" crossorigin>
-<link rel="stylesheet" href="/site.css">
-<script src="/video.js" defer></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20fill%3D%22%23EDEBE4%22%2F%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23B0281F%22%20stroke-width%3D%222.5%22%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%228.5%22%2F%3E%3Cpath%20d%3D%22M16%201.5V30.5M1.5%2016H30.5%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<style>
+  /* Everything is inline: the holding page makes no second request of any
+     kind, so it cannot be caught half-loaded. Fonts are the ones already on
+     the visitor's machine, chosen to sit close to the real site's Faustina
+     and IBM Plex Mono. */
+  :root {
+    --paper:     #EDEBE4;
+    --ink:       #1A1917;
+    --ink-muted: #6B6862;
+    --rule:      #C9C5BB;
+    --mark:      #B0281F;
+  }
+
+  * { box-sizing: border-box; border-radius: 0; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    padding: 2rem 1.5rem 4rem;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: Charter, "Bitstream Charter", Georgia, "Times New Roman", serif;
+    font-size: 1.0625rem;
+    line-height: 1.65;
+    overflow-wrap: break-word;
+  }
+
+  main { max-width: 32rem; margin-inline: auto; width: 100%; }
+
+  .wordmark {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.0625rem;
+    letter-spacing: -0.01em;
+  }
+
+  .mark { color: var(--mark); flex: none; }
+
+  h1 {
+    margin: 2rem 0 0;
+    font-size: 1.75rem;
+    font-weight: 500;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+
+  p { margin: 1rem 0 0; max-width: 30rem; color: var(--ink-muted); }
+
+  hr {
+    height: 0;
+    margin: 2rem 0;
+    border: 0;
+    border-top: 1px solid var(--rule);
+  }
+
+  .contact {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.9375rem;
+    letter-spacing: 0.01em;
+  }
+
+  a { color: var(--ink); text-decoration-color: var(--rule); text-underline-offset: 0.17em; }
+  a:hover { text-decoration-color: var(--mark); }
+  a:focus-visible { outline: 2px solid var(--mark); outline-offset: 3px; }
+
+  .foot {
+    margin-top: 2rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+
+  @media (min-width: 43.75em) {
+    body { padding: 2rem 2.5rem 4rem; }
+    h1 { font-size: 2.25rem; }
+  }
+</style>
 </head>
 <body>
-<header class="site-head">
-<a class="wordmark" href="/"><svg class="mark" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" focusable="false"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1"/><line x1="7" y1="0" x2="7" y2="14" stroke="currentColor" stroke-width="1"/><line x1="0" y1="7" x2="14" y2="7" stroke="currentColor" stroke-width="1"/></svg><span>Adib Ahsan</span></a>
-<nav aria-label="Sections"><a href="/work/">work</a><span class="sep" aria-hidden="true"> · </span><a href="/notes/">notes</a><span class="sep" aria-hidden="true"> · </span><a href="/about/">about</a><span class="sep" aria-hidden="true"> · </span><a href="/contact/">contact</a></nav>
-</header>
 <main>
-<h1 class="name"><span class="signature" aria-hidden="true"></span><span class="vis-hidden">Adib Ahsan</span></h1>
-<p class="role">Creative Director<span class="sep" aria-hidden="true"> · </span>Dhaka</p>
-<p class="tagline">Motion · Film · Design</p>
-<hr>
-<h2 class="label">Selected work</h2><ul class="manifest"><li class="row"><a class="row-link" href="/work/yacine-tareb/"><span class="row-title">Athar</span><span class="row-meta"><span class="row-client">Yacine Tareb</span><span class="row-year">2026</span><span class="row-runtime">0:41:46</span></span></a></li><li class="row"><a class="row-link" href="/work/example-project-two/"><span class="row-title">Another Example Title</span><span class="row-meta"><span class="row-client">Personal</span><span class="row-year">2026</span><span class="row-runtime">0:01:30</span></span></a></li></ul>
-<p class="more"><a href="/work/">All work →</a></p>
-<h2 class="label">Notes</h2><ul class="note-list"><li class="note-row"><time class="note-date" datetime="2026-09-02">2026-09-02</time><a href="/notes/second-note/">A newer note</a></li><li class="note-row"><time class="note-date" datetime="2026-08-14">2026-08-14</time><a href="/notes/example-note/">Title of the note</a></li></ul>
+  <p class="wordmark"><svg class="mark" width="16" height="16" viewBox="0 0 14 14" aria-hidden="true" focusable="false"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1"/><line x1="7" y1="0" x2="7" y2="14" stroke="currentColor" stroke-width="1"/><line x1="0" y1="7" x2="14" y2="7" stroke="currentColor" stroke-width="1"/></svg><span>Adib Ahsan</span></p>
+
+  <h1>A new site is on the way.</h1>
+
+  <p>This one is still being built, so there is nothing here worth your time yet. It will be worth it shortly.</p>
+
+  <hr>
+
+  <p class="contact">Work enquiries — <a href="mailto:hello@adibahsan.com">hello@adibahsan.com</a></p>
+
+  <p class="foot">Adib Ahsan · Dhaka</p>
 </main>
-<footer class="site-foot">
-<p>© 2026 Adib Ahsan<span class="sep" aria-hidden="true"> · </span>Dhaka</p>
-<p class="elsewhere"><a href="https://www.instagram.com/adib.ahsan_/">Instagram</a></p>
-</footer>
 </body>
 </html>
