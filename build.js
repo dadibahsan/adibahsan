@@ -932,14 +932,24 @@ async function build() {
   // The browser-tab icon: the registration mark, in the site's own colours.
   // Modern browsers use the SVG; the PNGs cover older Safari and the icon
   // shown when someone saves the site to a phone home screen.
+  // Turning the SVG into PNGs needs sharp to be able to draw SVG, which
+  // depends on a graphics library that is present on this machine but is not
+  // guaranteed on the server that builds the site. If it is missing, the SVG
+  // icon alone is published — every current browser uses that one anyway —
+  // rather than failing the whole build over a browser-tab icon.
   const faviconSvg = fs.readFileSync(path.join(SRC, 'favicon.svg'));
   writeFile('favicon.svg', faviconSvg);
-  for (const icon of [['favicon-32.png', 32], ['apple-touch-icon.png', 180]]) {
-    const png = await sharp(faviconSvg, { density: 384 })
-      .resize(icon[1], icon[1])
-      .png()
-      .toBuffer();
-    writeFile(icon[0], png);
+  try {
+    for (const icon of [['favicon-32.png', 32], ['apple-touch-icon.png', 180]]) {
+      const png = await sharp(faviconSvg, { density: 384 })
+        .resize(icon[1], icon[1])
+        .png()
+        .toBuffer();
+      writeFile(icon[0], png);
+    }
+  } catch (err) {
+    warnings.push('⚠ Could not turn favicon.svg into PNG icons here (' + err.message.split('\n')[0] + '). ' +
+      'The SVG icon is published on its own, which every current browser uses. Nothing else is affected.');
   }
 
   // The homepage wordmark: a hand-drawn signature that draws itself on.
