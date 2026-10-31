@@ -141,6 +141,12 @@ function renderNav(site, currentPath) {
   return '<nav aria-label="Sections">' + items.join('<span class="sep" aria-hidden="true"> · </span>') + '</nav>';
 }
 
+// The fingerprinted address of a built file ("/site.css?v=…"), or the plain
+// one if the build has not provided it.
+function asset(site, name) {
+  return (site.assets && site.assets[name]) || '/' + name;
+}
+
 function renderElsewhere(site) {
   if (!Array.isArray(site.elsewhere) || site.elsewhere.length === 0) return '';
   const links = site.elsewhere.map(function (entry) {
@@ -197,10 +203,10 @@ function layout(site, page) {
     // most pages never use, so they load on demand instead of on every visit.
     '<link rel="preload" as="font" type="font/woff2" href="/f/serif-var.woff2" crossorigin>',
     '<link rel="preload" as="font" type="font/woff2" href="/f/mono-400.woff2" crossorigin>',
-    '<link rel="stylesheet" href="/site.css">',
+    '<link rel="stylesheet" href="' + escapeHtml(asset(site, 'site.css')) + '">',
     // The only JavaScript on the site. "defer" means it never blocks the page
     // from rendering, and it runs after the HTML is in place. SPEC.md §12.2.
-    '<script src="/video.js" defer></script>',
+    '<script src="' + escapeHtml(asset(site, 'video.js')) + '" defer></script>',
     page.head || '',
     '</head>',
     '<body>',
@@ -231,6 +237,7 @@ function layout(site, page) {
 
 module.exports = {
   layout: layout,
+  asset: asset,
   escapeHtml: escapeHtml,
   plainText: plainText,
   image: image,

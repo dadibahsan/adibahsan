@@ -230,14 +230,14 @@ main { padding-top: var(--s8); }
   width: 22.5rem;
   max-width: 100%;
   aspect-ratio: 360 / 99;
-  background: url("/wordmark-static.webp") no-repeat left center / contain;
+  background: url("/wordmark-static.webp?v=23f0cc3f8f") no-repeat left center / contain;
 }
 
 .signature::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: url("/wordmark.webp") no-repeat left center / contain;
+  background: url("/wordmark.webp?v=f72268525e") no-repeat left center / contain;
   animation: signature-settle 300ms linear 1500ms forwards;
 }
 

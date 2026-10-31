@@ -4,6 +4,18 @@
 /*/
   Cache-Control: public, max-age=3600
 
+/site.css
+  Cache-Control: public, max-age=31536000, immutable
+
+/video.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/wordmark.webp
+  Cache-Control: public, max-age=31536000, immutable
+
+/wordmark-static.webp
+  Cache-Control: public, max-age=31536000, immutable
+
 /m/*
   Cache-Control: public, max-age=31536000, immutable
 

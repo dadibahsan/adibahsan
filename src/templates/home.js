@@ -6,7 +6,7 @@
 
 'use strict';
 
-const { escapeHtml, manifestRow } = require('./layout.js');
+const { escapeHtml, manifestRow, asset } = require('./layout.js');
 
 // The three most recent notes, title and date only. SPEC.md §9.1.
 function recentNotes(notes) {
@@ -61,6 +61,10 @@ function home(site, projects, notes) {
     // tell a stranger who you are. Nothing here is shown on the page itself.
     description: site.name + ' — ' + site.role + ', ' + site.location + '. ' + site.tagline,
     ogType: 'website',
+    // The signature is the largest thing on the homepage, but it is a CSS
+    // background, which the browser would only discover after loading the
+    // stylesheet. Naming it here lets the download start straight away.
+    head: '<link rel="preload" as="image" href="' + escapeHtml(asset(site, 'wordmark-static.webp')) + '" fetchpriority="high">',
     body: body,
   };
 }

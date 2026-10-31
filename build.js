@@ -32,6 +32,7 @@
 // Node itself — nothing to install.
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');        // fingerprints for cached files
 
 // The three installed packages, and no others. SPEC.md §5.2.
 const sharp = require('sharp');          // resizes images and writes WebP
@@ -73,6 +74,14 @@ const POSTER_RATIO_TOLERANCE = 0.01;   // 1%
 /* ================================================================== *
  * SMALL HELPERS
  * ================================================================== */
+
+// A short fingerprint of a file's contents. It goes on the end of the file's
+// address ("/site.css?v=3f9a2c1b0e"), so the address changes whenever the
+// file does. That lets browsers keep a copy for a year: an edited file has a
+// new address and is fetched fresh; an unchanged one is never fetched twice.
+function fingerprint(contents) {
+  return crypto.createHash('sha256').update(contents).digest('hex').slice(0, 10);
+}
 
 function formatBytes(bytes) {
   if (bytes < 1024) return bytes + ' B';
@@ -1158,6 +1167,11 @@ function headersFile() {
     '/*/\n' +
     '  Cache-Control: public, max-age=3600\n' +
     '\n' +
+    // Fingerprinted files: their address changes whenever they do, so they
+    // are safe to keep for a year.
+    ['/site.css', '/video.js', '/wordmark.webp', '/wordmark-static.webp'].map(function (file) {
+      return file + '\n  Cache-Control: public, max-age=31536000, immutable\n\n';
+    }).join('') +
     '/m/*\n' +
     '  Cache-Control: public, max-age=31536000, immutable\n' +
     '\n' +
@@ -1238,7 +1252,33 @@ async function build() {
   // the way out. Nothing else is touched: the rules, the order and the
   // formatting are left exactly as written, so the published file is still
   // readable if you ever look at it. SPEC.md §13.
-  writeFile('site.css', stripCssComments(fs.readFileSync(path.join(SRC, 'site.css'), 'utf8')));
+  //
+  // Each file below also gets a fingerprinted address, collected in
+  // site.assets, which the templates use in place of the plain filename.
+  const assets = {};
+
+  // The homepage wordmark: a hand-drawn signature that draws itself on.
+  // Two files, both made once from the After Effects render and committed to
+  // src/ — the build only copies them, so no video tooling is needed to build
+  // the site. wordmark-static.webp is the finished signature at full detail and
+  // is what stays on screen; wordmark.webp is the one-second animation that
+  // plays over it and then fades away. See src/site.css for how the two are
+  // layered. They go first because the stylesheet points at them.
+  for (const asset of ['wordmark.webp', 'wordmark-static.webp']) {
+    const data = fs.readFileSync(path.join(SRC, asset));
+    writeFile(asset, data);
+    assets[asset] = '/' + asset + '?v=' + fingerprint(data);
+  }
+
+  // The stylesheet, pointing at the fingerprinted wordmark addresses. Its own
+  // fingerprint is taken afterwards, so a new wordmark also means a new
+  // stylesheet address.
+  let css = stripCssComments(fs.readFileSync(path.join(SRC, 'site.css'), 'utf8'));
+  css = css.replace(/url\("\/(wordmark(?:-static)?\.webp)"\)/g, function (match, name) {
+    return 'url("' + assets[name] + '")';
+  });
+  writeFile('site.css', css);
+  assets['site.css'] = '/site.css?v=' + fingerprint(css);
 
   // The browser-tab icon: the registration mark, in the site's own colours.
   // Modern browsers use the SVG; the PNGs cover older Safari and the icon
@@ -1263,19 +1303,11 @@ async function build() {
       'The SVG icon is published on its own, which every current browser uses. Nothing else is affected.');
   }
 
-  // The homepage wordmark: a hand-drawn signature that draws itself on.
-  // Two files, both made once from the After Effects render and committed to
-  // src/ — the build only copies them, so no video tooling is needed to build
-  // the site. wordmark-static.webp is the finished signature at full detail and
-  // is what stays on screen; wordmark.webp is the one-second animation that
-  // plays over it and then fades away. Together they are under the 80 KB
-  // budget. See src/site.css for how the two are layered.
-  for (const asset of ['wordmark.webp', 'wordmark-static.webp']) {
-    writeFile(asset, fs.readFileSync(path.join(SRC, asset)));
-  }
   // The one and only JavaScript file on the site. SPEC.md §12.
   const videoJs = fs.readFileSync(path.join(SRC, 'video.js'), 'utf8');
   writeFile('video.js', videoJs);
+  assets['video.js'] = '/video.js?v=' + fingerprint(videoJs);
+  site.assets = assets;
   if (Buffer.byteLength(videoJs) > 3 * 1024) {
     warnings.push('⚠ video.js is ' + formatBytes(Buffer.byteLength(videoJs)) + ', over the 3 KB budget in SPEC.md §13.');
   }
