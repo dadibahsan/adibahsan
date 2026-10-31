@@ -7,17 +7,17 @@
   "engines": {
     "node": ">=20"
   },
-  "_maintenance_note": "MAINTENANCE MODE IS ON. 'build' runs maintenance.js, which publishes only a holding page. To bring the real site back, change 'build' and 'preview' below from maintenance.js to build.js, then run: npm run build",
   "scripts": {
-    "build": "node maintenance.js",
-    "preview": "node maintenance.js && node serve.js",
-    "build:site": "node build.js",
-    "preview:site": "node build.js && node serve.js",
-    "deploy": "npm run build && git add -A && git commit -m \"Update site\" && git push"
+    "build": "node build.js",
+    "preview": "node build.js && node serve.js",
+    "deploy": "npm run build && git add -A && git commit -m \"Update site\" && git push",
+    "build:maintenance": "node maintenance.js",
+    "preview:maintenance": "node maintenance.js && node serve.js"
   },
   "dependencies": {
     "gray-matter": "^4.0.3",
     "marked": "^12.0.2",
     "sharp": "^0.33.5"
-  }
+  },
+  "_maintenance": "To take the site offline behind a holding page: npm run build:maintenance, then commit and push. To bring it back: npm run deploy."
 }

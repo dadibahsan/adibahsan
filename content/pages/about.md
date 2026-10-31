@@ -1,12 +1,8 @@
 ---
 title: About
-summary: What I do, how I work, and where I am.
+summary: Adib Ahsan, creative director and video editor based in Dhaka.
 ---
 
-Filler. Replace this with your own words.
+I'm Adib Ahsan, a creative director and video editor based in Dhaka. I make documentaries, motion graphics and short-form edits, and I've delivered work in languages I don't speak, including French.
 
-What you do. How you work — the pipeline, the shape of a typical job, what a
-client is actually buying. The languages you deliver in. Where you are.
-
-Two or three short paragraphs is plenty. This page is read by people deciding
-whether to email you, not by people who want your life story.
+Tools: After Effects, Premiere Pro, Photoshop, and AI tools for image and video.

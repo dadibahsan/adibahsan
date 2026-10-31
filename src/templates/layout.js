@@ -51,19 +51,6 @@ function truncate(text, limit) {
   return (lastSpace > limit * 0.6 ? cut.slice(0, lastSpace) : cut).replace(/[,.;:—-]+$/, '') + '…';
 }
 
-// "4:12" becomes "0:04:12" — SPEC.md §9.2. The site's grammar is a delivery
-// manifest, so runtimes are rendered as full timecode. "—" passes through
-// unchanged, for projects that are stills only.
-function toTimecode(runtime) {
-  if (runtime === '—') return '—';
-  const parts = String(runtime).split(':');
-  const minutes = parseInt(parts[0], 10);
-  const seconds = parts[1];
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-  return hours + ':' + String(remainingMinutes).padStart(2, '0') + ':' + seconds;
-}
-
 /**
  * Build a responsive <img> tag. SPEC.md §8.3.
  *
@@ -106,17 +93,21 @@ function image(record, options) {
     ' ' + loadingAttrs + ' decoding="async">';
 }
 
-// One row of the work manifest: title on the left, client / year / timecode on
-// the right. The whole row is the click target. SPEC.md §9.2.
+// One row of the work manifest: the title on the left with its category
+// underneath, so a visitor can tell at a glance what kind of work each piece
+// is; client and year on the right. The whole row is the click target.
+// SPEC.md §9.2.
 function manifestRow(project) {
   return [
     '<li class="row">',
     '<a class="row-link" href="/work/' + escapeHtml(project.slug) + '/">',
+    '<span class="row-head">',
     '<span class="row-title">' + escapeHtml(project.title) + '</span>',
+    project.category ? '<span class="row-category">' + escapeHtml(project.category) + '</span>' : '',
+    '</span>',
     '<span class="row-meta">',
     '<span class="row-client">' + escapeHtml(project.client) + '</span>',
     '<span class="row-year">' + escapeHtml(project.year) + '</span>',
-    '<span class="row-runtime">' + escapeHtml(toTimecode(project.runtime)) + '</span>',
     '</span>',
     '</a>',
     '</li>',
@@ -242,7 +233,6 @@ module.exports = {
   layout: layout,
   escapeHtml: escapeHtml,
   plainText: plainText,
-  toTimecode: toTimecode,
   image: image,
   manifestRow: manifestRow,
   REGISTRATION_MARK: REGISTRATION_MARK,

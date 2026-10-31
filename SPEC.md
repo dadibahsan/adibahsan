@@ -264,65 +264,79 @@ An array of project objects, in the order they should appear. **Order in the fil
 |---|---|---|---|
 | `slug` | string | ✅ | Lowercase letters, digits, hyphens only. Unique. Becomes the URL: `/work/<slug>/`. **Never change a slug after publishing** — it breaks any link anyone has shared. |
 | `title` | string | ✅ | Display title. Any characters, including accents. |
+| `category` | string | ➖ | What kind of work this is, e.g. `"Documentary · Animation & Compositing"`. Shown under the title on the home and work pages, and above the title on the project page. Under 45 characters reads best. |
 | `client` | string | ✅ | Client name, or `"Personal"`. |
 | `year` | number | ✅ | Four digits. |
-| `runtime` | string | ✅ | `M:SS` or `MM:SS`. Rendered as timecode. Use `"—"` for stills-only projects. |
+| `runtime` | string | ➖ | `M:SS` or `MM:SS` — the length of the whole work. **Never shown on the site.** Kept only so the build can warn if a film on the page runs longer than the work it comes from. Safe to leave out. |
 | `language` | string | ✅ | e.g. `"English"`, `"Silent"`. |
 | `role` | string | ✅ | Comma-separated: `"Director, Animation, Edit"`. |
-| `youtube` | string \| null | ✅ | The 11-character video ID **only** — not a URL. `null` if there's no video. May be omitted entirely when `video` is used. |
-| `video` | string | ➖ | Self-host the film instead of using YouTube. See below. |
-| `poster` | string | ✅ | Filename inside `media/<slug>/`. Usually `"poster.jpg"`. |
+| `media` | array | ➖ | **What is on the page**: films and pictures, in order, each tagged by what it is. See below. Use this for new projects. |
+| `youtube` | string \| null | ➖ | *Older way.* The 11-character video ID **only** — not a URL. `null` if there's no video. Not needed when `media` or `video` is used. |
+| `video` | string | ➖ | *Older way.* Self-host the film instead of using YouTube. |
+| `poster` | string | ✅ | Filename inside `media/<slug>/`. Usually `"poster.jpg"`. The image used for link previews, and the default poster for any film that doesn't name its own. Must be 16:9. |
 | `summary` | string | ✅ | 2–4 sentences. Markdown allowed. **Write about the problem, not the process.** |
 | `technical` | string | ➖ | One paragraph. Pipeline, constraint, what was hard. Markdown allowed. Omit if there's nothing real to say. |
-| `stills` | array | ➖ | See below. |
+| `stills` | array | ➖ | *Older way.* Pictures after the summary. See below. |
 | `featured` | boolean | ➖ | `true` puts it on the homepage. |
 | `credits` | array | ➖ | `[{ "role": "Sound", "name": "Someone" }]` |
 | `link` | object | ➖ | `{ "label": "Watch on ...", "url": "https://..." }` |
 | `draft` | boolean | ➖ | `true` = excluded from the build entirely. Use for work in progress. |
 
-#### `video` — self-hosting a film (§23.4)
+#### `media` — what is on the page
 
-For a piece that cannot live on YouTube: a music copyright claim, or a client who will not have it there.
-
-Put the file in `media/<slug>/` and name it in the entry:
+One ordered list of everything shown on the project page. Each item is tagged by what it is:
 
 ```json
-{
-  "slug": "athar",
-  "video": "athar.mp4",
-  "poster": "poster.jpg"
-}
-```
-
-The page then renders a normal `<video>` player with the browser's own controls, instead of the YouTube facade. Nothing downloads until the visitor presses play, so a page with a self-hosted film costs the same to open as any other.
-
-| Rule | Detail |
-|---|---|
-| Formats | `.mp4` (use this), `.webm`, `.mov`. Anything else is an error. |
-| Mutually exclusive with `youtube` | A project uses one or the other. Setting both is an error. When `video` is set, `youtube` may be left out entirely. |
-| Missing file | Build fails with the filename and a list of what *is* in the folder. |
-| **Size limit** | **Cloudflare refuses to serve any single file over 25 MiB.** The build warns above 24 MB. Over the limit, the film simply will not play once published. |
-| Poster | Required, as for any project. It is what the player shows before play, and what a shared link previews with. |
-| Filenames | Spaces are handled correctly, but lowercase-and-hyphens is still easier to live with. |
-
-The file is copied to `dist/m/<slug>/` untouched — no re-encoding. What you export is what gets served, so export sensibly: 1080p, H.264, AAC audio, and a bitrate that keeps the whole file under 24 MB. A four-minute film inside that budget means roughly 700 kbps, which is modest — **for anything longer than about two minutes, YouTube will look better.** Self-hosting is the exception, not the default.
-
-Keep total self-hosted media under ~200 MB across the whole repository.
-
-#### `stills` accepts two forms
-
-```json
-"stills": ["01.jpg", "02.jpg"]
-```
-or, preferred:
-```json
-"stills": [
-  { "file": "01.jpg", "alt": "Describe what is in the frame" },
-  { "file": "02.jpg", "alt": "Describe what is in the frame" }
+"media": [
+  { "youtube": "dQw4w9WgXcQ" },
+  { "image": "stills/01.jpg", "alt": "The opening frame, before the cut" },
+  { "video": "trailer.mp4", "poster": "trailer.jpg" },
+  { "image": "stills/02.jpg", "alt": "Final sequence, handheld" }
 ]
 ```
 
-If a plain string is given, the build generates `alt` as `"<title> — still <n>"`. Acceptable, but real alt text is better for both blind users and search.
+**The first item is the lead.** It sits above the summary and loads immediately. The lead must be a film or a picture, never a links block. Everything after it follows the summary, in the order written, and loads as the visitor scrolls. Mix the three kinds freely, in any order and any number.
+
+| Tag | Takes | Notes |
+|---|---|---|
+| `youtube` | the 11-character video ID | Shown as a poster with a play button; nothing is fetched from YouTube until it's pressed. Optional `poster` names a frame in `media/<slug>/`; otherwise the project's `poster` is used. |
+| `video` | a filename in `media/<slug>/` | A film served from this site, in the browser's own player. `.mp4` (use this), `.webm`, `.mov`. Nothing downloads until play is pressed. Optional `poster` as above. **Cloudflare refuses any single file over 25 MiB** — the build warns above 24 MB. |
+| `image` | a filename in `media/<slug>/` | A picture at its natural shape. Sub-folders are fine: `"stills/01.jpg"`. Give it `alt` — one sentence saying what is in the frame. It is read aloud to blind visitors and read by image search. |
+| `links` | a list of `{ "title", "url" }` | A block of links out — Instagram reels, a longer cut on YouTube. Each link is a large full-width row, named by where it goes (`INSTAGRAM ↗`), opening in a new tab so the portfolio stays open. Optional `"heading"` and `"text"` above the rows, optional `"note"` under each title. Can't be the first item. |
+
+A links block, written out:
+
+```json
+{
+  "heading": "Watch them on Instagram",
+  "text": "They were made for the feed, so that is where they play best.",
+  "links": [
+    { "title": "Edit 01", "url": "https://www.instagram.com/reel/…/" },
+    { "title": "Edit 02", "url": "https://www.instagram.com/reel/…/", "note": "Optional short line" }
+  ]
+}
+```
+
+Without a `heading`, the block is named after where its links go — "On Instagram", "On YouTube". With more than one link, rows are numbered. A link whose address still contains `REPLACE` is flagged on every build until the real one is pasted in.
+
+**Vertical films.** A film served from here is given its own exact shape, read from the file itself — so a 9:16 reel gets a 9:16 box, not a 16:9 one with black bars. Vertical films are centred and sized to fit on screen (never wider than 24rem). Phone footage stored sideways with a rotation flag is read the right way up. A film's own `poster` keeps its shape too; only YouTube posters and the project `poster` are held to 16:9.
+
+Rules the build enforces:
+
+- Each item is exactly one thing. `{ "image": …, "video": … }` in one item is an error.
+- A project uses **either** `media` **or** the older `youtube` / `video` / `stills` fields — never both.
+- Every file named must exist. A missing one fails the build and lists what *is* in the folder.
+- A film longer than the stated `runtime` is flagged — the work can't be shorter than a clip of it. A film *shorter* than the runtime is fine; that's an excerpt.
+
+A film served from here is copied to `dist/m/<slug>/` untouched — no re-encoding. Export sensibly: 1080p, H.264, AAC, and a bitrate that keeps the whole file under 24 MB. **For anything longer than about two minutes, YouTube will look better.** Self-hosting is for a piece that can't be on YouTube — a music claim, or a client who won't have it there.
+
+Keep total self-hosted media under ~200 MB across the whole repository.
+
+#### The older way — `youtube`, `video`, `stills`
+
+Projects written before `media` existed still work unchanged. The build reads them into the same list: the film (or, with no film, the poster) becomes the lead, and each still follows. `stills` accepts plain filenames or `{ "file", "alt" }` objects, and looks in `media/<slug>/stills/`.
+
+There is no need to convert an existing project. For a new one, write `media`.
 
 #### Example entry — filler content, replace entirely
 
@@ -495,17 +509,20 @@ No hero image. No showreel autoplay. No "scroll for more" affordance. The restra
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ Example Project Title                 Client   2026  0:04:12 │
+│ Example Project Title                 Client   2026          │
+│ DOCUMENTARY · ANIMATION                                      │
 │ ─────────────────────────────────────────────────────────── │
-│ Another Example Title                 Client   2026  0:01:30 │
+│ Another Example Title                 Client   2026          │
+│ SHORT-FORM · SOCIAL                                          │
 │ ─────────────────────────────────────────────────────────── │
-│ A Third One                         Personal   2026  0:00:45 │
+│ A Third One                         Personal   2026          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 - Title: serif, links to the project. The whole row is the click target.
-- Client, year, runtime: mono, right-aligned, tabular figures.
-- **Runtime renders as full timecode** — `4:12` becomes `0:04:12`. `LOAD-BEARING` for the concept: the site's structural grammar is a delivery manifest, not a gallery.
+- Category, if the project has one: mono, uppercase, muted, on its own line under the title — so a visitor can tell what kind of work it is before clicking.
+- Client and year: mono, right-aligned, tabular figures.
+- Runtime is not shown anywhere on the site.
 - Hairline rule between rows. No thumbnails. `TASTE CALL` — thumbnails can be added later (§23.3), but their absence is what makes the page read as a catalogue rather than a portfolio grid.
 - On mobile (< 700 px), metadata drops to a second line under the title, still mono, still left-aligned.
 
@@ -513,8 +530,8 @@ No hero image. No showreel autoplay. No "scroll for more" affordance. The restra
 
 Exact order. Do not rearrange.
 
-1. **`<h1>`** — title.
-2. **Metadata block** — mono definition list: `YEAR / RUNTIME / LANGUAGE / CLIENT / ROLE`. Labels uppercase mono at 12 px in muted grey; values in ink.
+1. **Category, then `<h1>`** — the category as a small mono label above the title, if the project has one.
+2. **Metadata block** — mono definition list: `YEAR / LANGUAGE / CLIENT / ROLE`. Labels uppercase mono at 12 px in muted grey; values in ink.
 3. **Video** — the facade player (§11) at media width. If `youtube` is `null`, show the poster image instead, with no play button.
 4. **Summary** — serif, constrained to text width.
 5. **Stills** — full media width, stacked vertically, one spacing unit apart. No captions, no lightbox, no grid.

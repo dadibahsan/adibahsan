@@ -23,7 +23,9 @@ function notesIndex(site, notes) {
     '<h1>Notes</h1>',
     notes.length
       ? '<ul class="note-list note-list-full">' + rows.join('') + '</ul>'
-      : '<p>Nothing written yet.</p>',
+      // With no notes published, the page stays — the menu still points here —
+      // and says so plainly, without suggesting anything is broken.
+      : '<p class="notes-empty">Nothing here for now.</p>',
   ].join('\n');
 
   return {

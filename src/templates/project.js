@@ -4,14 +4,13 @@
 
 'use strict';
 
-const { escapeHtml, plainText, toTimecode, image } = require('./layout.js');
+const { escapeHtml, plainText, image } = require('./layout.js');
 
-// The mono definition list under the title: YEAR / RUNTIME / LANGUAGE /
-// CLIENT / ROLE. Labels are uppercase mono in muted grey; values are in ink.
+// The mono definition list under the title: YEAR / LANGUAGE / CLIENT /
+// ROLE. Labels are uppercase mono in muted grey; values are in ink.
 function metadata(project) {
   const rows = [
     ['Year', project.year],
-    ['Runtime', toTimecode(project.runtime)],
     ['Language', project.language],
     ['Client', project.client],
     ['Role', project.role],
@@ -27,43 +26,23 @@ function metadata(project) {
   return '<dl class="meta-list">' + items.join('') + '</dl>';
 }
 
-// The video block. SPEC.md §11.2.
-//
-// Before anyone clicks, this page contains a poster image and a button and
-// nothing else — no YouTube code, and not a single request to Google. The
-// real player is only fetched if a visitor actually presses play, which
-// src/video.js handles. With JavaScript switched off, the <noscript> link
-// still takes them to the video.
-function video(project, posterRecord, videoFile) {
-  // A self-hosted film, served from this site rather than YouTube. SPEC.md
-  // §23.4. Used when a piece is blocked on YouTube — a music claim, or a
-  // client who will not have it there. Nothing is fetched until the visitor
-  // presses play, because preload is "none": before that the browser has only
-  // the poster, exactly like the YouTube facade beside it.
-  if (videoFile) return selfHosted(project, posterRecord, videoFile);
-
-  // No video on this project: show the poster on its own, with no play button.
-  if (!project.youtube) {
-    if (!posterRecord) return '';
-    return '<figure class="v v-still">' +
-      image(posterRecord, { alt: project.title + ' — poster frame', eager: true }) +
-      '</figure>';
-  }
-
-  const id = escapeHtml(project.youtube);
-
-  return [
-    '<figure class="v" data-yt="' + id + '" data-title="' + escapeHtml(project.title) + '">',
-    image(posterRecord, { alt: '', eager: true }),
-    '<button type="button" class="v-play" aria-label="Play video: ' + escapeHtml(project.title) + '">',
-    '<span aria-hidden="true">▶</span>',
-    '</button>',
-    '<noscript>',
-    '<a href="https://www.youtube.com/watch?v=' + id + '">Watch on YouTube</a>',
-    '</noscript>',
-    '</figure>',
-  ].join('');
-}
+/* ---- Media -------------------------------------------------------
+ *
+ * A project's pictures and films arrive as one ordered list, prepared by
+ * build.js. Each item is one of three kinds:
+ *
+ *   youtube — a poster and a play button; the real player is only fetched
+ *             if a visitor presses play (src/video.js). SPEC.md §11.2.
+ *   video   — a film served from this site, in the browser's own player.
+ *             Nothing downloads until play is pressed. SPEC.md §23.4.
+ *   image   — a picture, at its natural shape.
+ *   links   — a block of links out: Instagram reels, a longer cut on
+ *             YouTube. Never the lead.
+ *
+ * The first item is the lead: it sits above the summary and is loaded at
+ * once. Everything after it follows the summary and loads as the visitor
+ * scrolls near it. SPEC.md §9.3.
+ * ------------------------------------------------------------------ */
 
 // The poster frame as a plain URL, for the <video poster> attribute, which
 // takes a single image rather than a responsive set. The 1200px version is
@@ -74,43 +53,151 @@ function posterUrl(record) {
   return '/m/' + pick.file;
 }
 
+// Before anyone clicks, this block is a poster image and a button and nothing
+// else — no YouTube code, and not a single request to Google. With JavaScript
+// switched off, the <noscript> link still takes them to the video.
+function youtubeFacade(project, item, isLead) {
+  const id = escapeHtml(item.id);
+  return [
+    '<figure class="v" data-yt="' + id + '" data-title="' + escapeHtml(project.title) + '">',
+    image(item.poster, { alt: '', eager: isLead }),
+    '<button type="button" class="v-play" aria-label="Play video: ' + escapeHtml(project.title) + '">',
+    '<span aria-hidden="true">▶</span>',
+    '</button>',
+    '<noscript>',
+    '<a href="https://www.youtube.com/watch?v=' + id + '">Watch on YouTube</a>',
+    '</noscript>',
+    '</figure>',
+  ].join('');
+}
+
 // A native <video>. The browser's own controls are used rather than a custom
 // set: they are already keyboard accessible, already translated, and already
-// familiar. SPEC.md §23.4.
-function selfHosted(project, posterRecord, videoFile) {
-  // width and height are given so the browser reserves the right shape before
-  // anything loads and the page never jumps. They come from the poster, which
-  // is the only measurement available at build time.
-  const width = posterRecord ? posterRecord.outputs[posterRecord.outputs.length - 1].width : 1600;
-  const height = posterRecord
-    ? Math.round(width * posterRecord.height / posterRecord.width)
-    : 900;
+// familiar.
+function selfHosted(project, item) {
+  const posterRecord = item.poster;
 
+  // The box is given the film's exact shape before anything loads, so the page
+  // never jumps when play is pressed. The shape is read from the film file
+  // itself; failing that, from its poster; failing that, 16:9.
+  let width = 1600;
+  let height = 900;
+  if (item.file.size) {
+    width = item.file.size.width;
+    height = item.file.size.height;
+  } else if (posterRecord) {
+    width = posterRecord.outputs[posterRecord.outputs.length - 1].width;
+    height = Math.round(width * posterRecord.height / posterRecord.width);
+  }
   const poster = posterUrl(posterRecord);
 
+  // A vertical film — a reel — is not stretched to the full column, which
+  // would make it taller than the screen. It gets its own narrower box,
+  // centred, sized to fit on screen. --ratio carries its proportions to the
+  // stylesheet so that box can be worked out there.
+  const tall = height > width;
+  const ratio = (width / height).toFixed(4);
+  const style = 'aspect-ratio: ' + width + ' / ' + height + (tall ? '; --ratio: ' + ratio : '');
+
   return [
-    '<figure class="v v-file">',
+    '<figure class="v v-file' + (tall ? ' v-tall' : '') + '" style="' + style + '">',
     '<video controls playsinline preload="none"',
     poster ? ' poster="' + escapeHtml(poster) + '"' : '',
     ' width="' + width + '" height="' + height + '">',
-    '<source src="' + escapeHtml(videoFile.url) + '" type="' + escapeHtml(videoFile.type) + '">',
+    '<source src="' + escapeHtml(item.file.url) + '" type="' + escapeHtml(item.file.type) + '">',
     // Shown only by a browser that cannot play the file at all.
-    '<p class="v-fallback"><a href="' + escapeHtml(videoFile.url) + '">Download the film</a></p>',
+    '<p class="v-fallback"><a href="' + escapeHtml(item.file.url) + '">Download the film</a></p>',
     '</video>',
     '</figure>',
   ].join('');
 }
 
-// Stills: full media width, stacked vertically. No captions, no lightbox,
-// no grid. SPEC.md §9.3 step 5.
-function stills(entry) {
-  if (!entry.stills.length) return '';
+// Where a link goes, in one word, from its address.
+function platform(url) {
+  let host = '';
+  try { host = new URL(url).hostname.replace(/^www\./, ''); } catch (err) { return 'Link'; }
+  if (/(^|\.)instagram\.com$/.test(host)) return 'Instagram';
+  if (/(^|\.)(youtube\.com|youtu\.be)$/.test(host)) return 'YouTube';
+  if (/(^|\.)tiktok\.com$/.test(host)) return 'TikTok';
+  if (/(^|\.)vimeo\.com$/.test(host)) return 'Vimeo';
+  if (/(^|\.)behance\.net$/.test(host)) return 'Behance';
+  return host;
+}
 
-  const items = entry.stills.map(function (still) {
-    return image(still.record, { alt: still.alt });
+/* A block of links out, made to be clicked.
+ *
+ * Each link is a full-width row with a large title, so the whole row is an
+ * easy target on a phone. The destination is named on the right with an
+ * arrow, and the rows sit under a heavy rule that sets the block apart from
+ * the pictures around it.
+ *
+ * Links open in a new tab, so the portfolio is still there when the visitor
+ * comes back from Instagram or YouTube. Screen readers are told so.
+ */
+function linksBlock(item, number) {
+  const links = item.links;
+  if (!links.length) return '';
+
+  // Without a heading of its own, the block is named after where the links go.
+  const places = links.map(function (l) { return platform(l.url); });
+  const same = places.every(function (p) { return p === places[0]; });
+  const heading = item.heading || (same ? 'On ' + places[0] : 'Elsewhere');
+  const id = 'links-' + number;
+  const numbered = links.length > 1;
+
+  const rows = links.map(function (link, i) {
+    return [
+      '<li>',
+      '<a class="links-row" href="' + escapeHtml(link.url) + '" target="_blank" rel="noopener">',
+      numbered ? '<span class="links-num" aria-hidden="true">' + String(i + 1).padStart(2, '0') + '</span>' : '',
+      '<span class="links-head">',
+      '<span class="links-title">' + escapeHtml(link.title) + '</span>',
+      link.note ? '<span class="links-note">' + escapeHtml(link.note) + '</span>' : '',
+      '</span>',
+      '<span class="links-where">' + escapeHtml(places[i]) +
+        ' <span class="links-arrow" aria-hidden="true">↗</span>' +
+        '<span class="vis-hidden"> (opens in a new tab)</span></span>',
+      '</a>',
+      '</li>',
+    ].join('');
   });
 
-  return '<div class="stills">' + items.join('') + '</div>';
+  return [
+    '<section class="links" aria-labelledby="' + id + '">',
+    '<h2 class="label" id="' + id + '">' + escapeHtml(heading) + '</h2>',
+    item.text ? '<p class="links-text">' + escapeHtml(item.text) + '</p>' : '',
+    '<ol class="links-list">' + rows.join('') + '</ol>',
+    '</section>',
+  ].join('');
+}
+
+// One item, whichever kind it is.
+function renderMedia(project, item, isLead, number) {
+  if (item.type === 'youtube') return youtubeFacade(project, item, isLead);
+  if (item.type === 'video') return selfHosted(project, item);
+  if (item.type === 'links') return linksBlock(item, number);
+  if (item.type === 'image') {
+    return isLead
+      ? '<figure class="lead">' + image(item.record, { alt: item.alt, eager: true }) + '</figure>'
+      : image(item.record, { alt: item.alt });
+  }
+  return '';
+}
+
+// The first item, above the summary.
+function lead(entry) {
+  if (!entry.media.length) return '';
+  return renderMedia(entry.project, entry.media[0], true);
+}
+
+// Everything after the first, below the summary: full media width, stacked
+// vertically. No captions, no lightbox, no grid. SPEC.md §9.3 step 5.
+function mediaStack(entry) {
+  const rest = entry.media.slice(1).map(function (item, i) {
+    return renderMedia(entry.project, item, false, i + 1);
+  }).filter(function (html) { return html !== ''; });
+  if (!rest.length) return '';
+  return '<div class="media">' + rest.join('') + '</div>';
 }
 
 function credits(project) {
@@ -143,22 +230,6 @@ function prevNext(entry) {
   return '<nav class="prevnext" aria-label="Other projects">' + links.join('') + '</nav>';
 }
 
-// "4:12" becomes "PT4M12S" — the ISO 8601 duration format search engines
-// expect. SPEC.md §14.2.
-function isoDuration(runtime) {
-  if (runtime === '—') return null;
-  const parts = String(runtime).split(':');
-  const totalMinutes = parseInt(parts[0], 10);
-  const seconds = parseInt(parts[1], 10);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  return 'PT' +
-    (hours ? hours + 'H' : '') +
-    (minutes ? minutes + 'M' : '') +
-    (seconds ? seconds + 'S' : '');
-}
-
 /* Structured data — SPEC.md §14.2.
  *
  * This is how a search engine knows the page holds a video, and how it ends up
@@ -170,7 +241,8 @@ function isoDuration(runtime) {
  */
 function structuredData(site, entry) {
   const p = entry.project;
-  if (!p.youtube && !entry.video) return '';
+  const film = entry.media.find(function (m) { return m.type === 'youtube' || m.type === 'video'; });
+  if (!film) return '';
 
   const data = {
     '@context': 'https://schema.org',
@@ -184,16 +256,17 @@ function structuredData(site, entry) {
 
   // A YouTube piece is embedded; a self-hosted one is a file served from this
   // site. Search engines want a different property for each. SPEC.md §14.2.
-  if (p.youtube) {
-    data.embedUrl = 'https://www.youtube-nocookie.com/embed/' + p.youtube;
-  } else if (entry.video) {
-    data.contentUrl = site.domain + entry.video.url;
+  if (film.type === 'youtube') {
+    data.embedUrl = 'https://www.youtube-nocookie.com/embed/' + film.id;
+  } else {
+    data.contentUrl = site.domain + film.file.url;
   }
 
   if (entry.ogImage) data.thumbnailUrl = site.domain + entry.ogImage;
 
-  const duration = isoDuration(p.runtime);
-  if (duration) data.duration = duration;
+  // No duration is given. "runtime" describes the whole work, and the film on
+  // the page is often a short extract of it — telling search engines a
+  // one-minute clip runs forty minutes would be worse than saying nothing.
 
   // Escaping "<" stops a title containing "</script>" from breaking the page.
   const json = JSON.stringify(data).replace(/</g, '\\u003c');
@@ -203,27 +276,28 @@ function structuredData(site, entry) {
 /**
  * @param {object} site   Parsed content/site.json
  * @param {object} entry  Prepared by build.js:
- *                        { project, poster, stills, summaryHtml, technicalHtml,
+ *                        { project, media, summaryHtml, technicalHtml,
  *                          prev, next, ogImage }
  */
 function project(site, entry) {
   const p = entry.project;
 
   const body = [
-    // 1. title
+    // 1. what kind of work this is, then the title
+    p.category ? '<p class="kicker">' + escapeHtml(p.category) + '</p>' : '',
     '<h1>' + escapeHtml(p.title) + '</h1>',
 
     // 2. metadata
     metadata(p),
 
-    // 3. video, or the poster on its own
-    video(p, entry.poster, entry.video),
+    // 3. the lead — a film, or the first picture
+    lead(entry),
 
     // 4. summary
     '<div class="prose">' + entry.summaryHtml + '</div>',
 
-    // 5. stills
-    stills(entry),
+    // 5. the rest of the media, in the order written
+    mediaStack(entry),
 
     // 6. technical note
     entry.technicalHtml

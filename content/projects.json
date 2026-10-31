@@ -2,28 +2,42 @@
   {
     "slug": "yacine-tareb",
     "title": "Athar",
+    "category": "Documentary · Animation & Compositing",
     "client": "Yacine Tareb",
     "year": 2026,
     "runtime": "41:46",
     "language": "French",
     "role": "Director, Animation, Edit",
-    "video": "Yacine Athar Series.mp4",
     "poster": "poster.jpg",
     "featured": true,
-    "summary": "A script arrives in French, which I don't speak, and leaves as a documentary. About the Mongol invasions and what they ended 800 years ago. There's no footage of any of it, obviously, and no budget to shoot reenactments, so every frame gets built. Which means every frame has to hold up when someone looks at it closely.",
-    "technical": "Most of the work happens before any image exists. I go through the script looking for where it turns — where the tension actually breaks — and then build out a Narrative Map, which is a document that takes the bilingual script line by line and assigns each one a visual plan, an audio plan, a mood. Nothing gets made until that's done. Ahnaf Tahmid Rafid works from the map on art direction and illustration, generating scenes, while I build the timeline in parallel — score, bilingual subtitles from JSON, the composition set up and waiting. Then the assets come in and each scene gets separated into layers across Z depth and rebuilt in 3D. That's where a still becomes a shot; camera movement, atmosphere, effects stacked in. Picture lock goes over to Premiere for music and sound design. Six months in and every episode still starts from zero.",
-    "stills": [
+    "summary": "THE SCRIPT IS FRENCH. About the History of Islam & how Genghis Khan's children conquered one-fifth of the world. There's no footage of any of it, obviously, so every frame gets built. Which means every frame has to hold up when someone looks at it closely.",
+    "technical": "The hardest part is researching the history. Even though the script is there, I still have to find out every bit of detail behind each scene. After fully grasping the story, I draft the entire episode in one sitting. Every cut, every scene, every map animation, the entire flow of the episode is decided beforehand. The next few days are just a grind of executing every scene and preparing every asset. The Art Director works on generating the scenes from scratch as planned in the narrative master map (the draft of the episode), while I build the timeline in parallel. With the score, bilingual subtitles from JSON, and the composition set up, we just wait. Then the assets come in, and each scene gets separated into layers across depth and rebuilt in 3D. That's where a still becomes a shot; camera movement, atmosphere, and effects are stacked in. Editing isn't the hard part; making the story is.",
+    "media": [
       {
-        "file": "01.jpg",
+        "video": "Yacine Athar Series.mp4"
+      },
+      {
+        "links": [
+          {
+            "title": "Watch the three-minute version",
+            "url": "https://youtu.be/i-Wd_BhoiPs",
+            "note": "Latest edit"
+          }
+        ],
+        "heading": "A longer look",
+        "text": "The video above is one minute. This one is three times longer, with more scenes from the series."
+      },
+      {
+        "image": "stills/01.jpg",
         "alt": "Four arab standing against sunset"
       },
       {
-        "file": "02.jpg",
+        "image": "stills/02.jpg",
         "alt": "Bloodline of Prophet (SAW)"
       },
       {
-        "file": "03.jpg",
-        "alt": "Poster"
+        "image": "stills/03.jpg",
+        "alt": "Genghis Khan riding his horse"
       }
     ],
     "credits": [
@@ -38,54 +52,53 @@
     }
   },
   {
-    "slug": "example-project-two",
-    "title": "Another Example Title",
+    "slug": "social-edits",
+    "title": "Edits for the Feed",
+    "category": "Personal Work · Short-form",
     "client": "Personal",
     "year": 2026,
-    "runtime": "1:30",
-    "language": "Silent",
-    "role": "Director, Edit",
-    "youtube": null,
-    "poster": "poster.jpg",
+    "language": "No dialogue",
+    "role": "Concept, Edit, Motion",
+    "poster": "thumbnails.jpg",
     "featured": true,
-    "summary": "A second filler entry, fully populated, so the build has more than one project to exercise ordering, prev/next links and the work index.",
-    "technical": "A second paragraph of filler technical notes.",
-    "stills": [
+    "summary": "Older personal projects, made for fun rather than for a client. I keep them here because they still show how I edit creative and conceptual ideas",
+    "media": [
       {
-        "file": "01.jpg",
-        "alt": "Description of the first frame"
+        "video": "hero.mp4",
+        "poster": "hero-poster.jpg"
       },
       {
-        "file": "02.jpg",
-        "alt": "Description of the second frame"
-      }
-    ],
-    "credits": [
-      {
-        "role": "Example role",
-        "name": "Example Name"
-      }
-    ]
-  },
-  {
-    "slug": "example-project-three",
-    "title": "Éclipse — Tróisième Ćwiczenie",
-    "client": "Personal",
-    "year": 2025,
-    "runtime": "—",
-    "language": "Silent",
-    "role": "Director",
-    "youtube": null,
-    "poster": "poster.jpg",
-    "summary": "A stills-only entry with no video and no stills listed, used to prove the page renders without a broken player and without an empty gap. The title carries accents on purpose.",
-    "stills": [
-      {
-        "file": "01.jpg",
-        "alt": "Description of the first frame"
+        "image": "thumbnails.jpg",
+        "alt": "The six edits, each on its opening frame"
       },
       {
-        "file": "02.jpg",
-        "alt": "Description of the second frame"
+        "links": [
+          {
+            "title": "Edit 01",
+            "url": "https://www.instagram.com/reel/DTQjSVvjoZg/"
+          },
+          {
+            "title": "Edit 02",
+            "url": "https://www.instagram.com/reel/DTVyguyjgw2/"
+          },
+          {
+            "title": "Edit 03",
+            "url": "https://www.instagram.com/reel/DL7Vqv_uRfp/"
+          },
+          {
+            "title": "Edit 04",
+            "url": "https://www.instagram.com/reel/DIYsFY6OFPH/"
+          },
+          {
+            "title": "Edit 05",
+            "url": "https://www.instagram.com/p/DKC2HASOHF4/"
+          },
+          {
+            "title": "Edit 06",
+            "url": "https://www.instagram.com/reel/DLjXBuDuVhP/"
+          }
+        ],
+        "heading": "Watch on Instagram"
       }
     ]
   }

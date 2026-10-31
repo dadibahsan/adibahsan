@@ -97,11 +97,12 @@
   --s9: 6rem;     --s10: 8rem;
 
   /* Layout — SPEC.md §10.5.
-     --w-text is the reading column: narrow text against wide media, both
-     aligned to the same left edge. Keep this at 36rem. Narrowing it to chase
-     a shorter line length leaves the summary stranded in a thin column beside
-     a full-width video, which reads as a mistake rather than as a choice. */
-  --w-text:  36rem;   /* the reading column */
+     --w-text is the reading column. The spec suggests 36rem against 56rem of
+     media, but at that ratio the text occupies only 64% of the column and the
+     empty strip down the right reads as an accident rather than a decision.
+     42rem is 75% of the media width: clearly narrower than the video, clearly
+     deliberate. Keep the two in proportion if you change either. */
+  --w-text:  42rem;   /* the reading column — 75% of --w-media */
   --w-media: 56rem;   /* video and stills */
   --gutter:  1.5rem;  /* 2.5rem at 700px and up */
 }
@@ -416,6 +417,27 @@ main { padding-top: var(--s8); }          /* major block — §10.4 */
 
 .row-link:hover .row-title { text-decoration-color: var(--mark); }
 
+/* Title and category stack on the left. */
+.row-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+
+/* What kind of work it is — read before the title is even clicked. */
+.row-category,
+.kicker {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+/* On a project page the category sits just above the title. */
+.kicker { margin: 0 0 var(--s3); }
+
 .row-meta {
   display: flex;
   flex-wrap: wrap;
@@ -444,6 +466,59 @@ main { padding-top: var(--s8); }          /* major block — §10.4 */
   margin: var(--s6) 0;
 }
 
+
+/* ================================================================
+   THE RAIL
+
+   Text runs to --w-text inside a --w-media column, which leaves an
+   empty strip down the right. A hairline in the registration red
+   closes that strip off at the media edge, so a page reads as a
+   deliberate two-part composition rather than as text that ran out
+   early and left the weight on one side.
+
+   Two rules keep it from ever going wrong:
+
+   1. It is drawn on the full-width block that CONTAINS the narrow
+      text, never on the text itself. That way "right: 0" lands
+      exactly on the media edge at every window width, with no
+      arithmetic to drift out of step and nothing that can push the
+      page sideways.
+
+   2. It only appears once the gap is wide enough to be worth
+      closing. On a phone the text already fills the column, so
+      there is no strip and no rail.
+
+   The rail sits behind the content, so a full-width image inside a
+   note passes over it rather than being cut by it.
+   ================================================================ */
+
+/* These three are full-width holders so the rail can sit on the media
+   edge; the rows inside them carry the reading width instead. */
+.meta-row,
+.credits li,
+.note-row { max-width: var(--w-text); }
+
+@media (min-width: 50rem) {
+  .prose,
+  .meta-list,
+  .credits,
+  .note-list { position: relative; }
+
+  .prose::after,
+  .meta-list::after,
+  .credits::after,
+  .note-list::after {
+    content: "";
+    position: absolute;
+    top: var(--s3);
+    bottom: var(--s3);
+    right: 0;
+    width: 1px;
+    background: var(--mark);
+    z-index: -1;
+  }
+}
+
 .prose h2 { margin-top: var(--s6); margin-bottom: var(--s3); }
 .prose h3 { margin-top: var(--s5); margin-bottom: var(--s2); }
 .prose ul, .prose ol { margin: 0 0 var(--s4); padding-left: var(--s5); }
@@ -470,7 +545,6 @@ figure { margin: 0; }
    Labels are uppercase mono in muted grey; values are in ink. */
 .meta-list {
   margin: var(--s5) 0 0;
-  max-width: var(--w-text);
 }
 
 .meta-row {
@@ -503,16 +577,153 @@ figure { margin: 0; }
 }
 
 /* Stills: full media width, stacked, one spacing unit apart. */
+/* The media stack: everything after the lead, in the order written in
+   projects.json. Pictures sit as bare images at their natural shape; films
+   sit in the same 16:9 box the lead uses. One rhythm of space between them,
+   whatever the mix. (.stills is the older name; kept so nothing that still
+   uses it breaks.) */
+.media,
 .stills { margin-top: var(--s6); }
-.stills img { margin-bottom: var(--s5); }
+
+.media > *,
+.stills img { display: block; margin-bottom: var(--s5); }
+
+.media > *:last-child,
 .stills img:last-child { margin-bottom: 0; }
+
+/* A film inside the stack keeps the stack's spacing, not its own. */
+.media > .v { margin-top: 0; }
+
+/* A film served from here takes its own shape — set on the page from the
+   film file — rather than the fixed 16:9 of a YouTube player. */
+.v-file { background: var(--ink); }
+
+/* A vertical film (a reel). At full column width it would be taller than
+   the screen, so it gets a narrower box, centred: never wider than 24rem,
+   and never so tall it doesn't fit on screen. The first width is a fallback
+   for browsers that cannot do the second. */
+.v-tall {
+  width: min(100%, 24rem);
+  width: min(100%, 24rem, calc(82svh * var(--ratio)));
+  margin-inline: auto;
+}
+
+/* ---- Links out ---------------------------------------------------
+   The block that sends people to Instagram reels or a longer cut on
+   YouTube. It has to be impossible to miss and easy to hit: a heavy
+   rule over it, full-width rows, large titles, the destination named
+   with an arrow in the registration red. */
+.links { margin-top: var(--s7); }
+
+.media > .links { margin-top: var(--s7); }
+.media > .links:not(:last-child) { margin-bottom: var(--s7); }
+
+.links-text {
+  margin: var(--s3) 0 var(--s5);
+  font-size: 1.125rem;
+  line-height: 1.55;
+}
+
+.links-list {
+  list-style: none;
+  margin: var(--s4) 0 0;
+  padding: 0;
+  border-top: 2px solid var(--ink);
+}
+
+.links-text + .links-list { margin-top: 0; }
+
+.links-list li { border-bottom: 1px solid var(--rule); }
+
+/* The destination stays beside the title while there is room. On a very
+   narrow screen, or with the text size turned right up, it drops onto its
+   own line, pushed to the right, instead of pushing the page sideways. */
+.links-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s2) var(--s4);
+  padding: var(--s5) 0;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.links-num {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+}
+
+.links-head {
+  flex: 1 1 8rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+
+.links-title {
+  font-family: var(--serif);
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1.25;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+  text-decoration-color: var(--rule);
+  transition: text-decoration-color 120ms ease-out;
+}
+
+.links-note {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.links-where {
+  flex: none;
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.links-arrow {
+  display: inline-block;
+  color: var(--mark);
+  transition: transform 120ms ease-out;
+}
+
+.links-row:hover .links-title,
+.links-row:focus-visible .links-title { text-decoration-color: var(--mark); }
+
+.links-row:hover .links-arrow,
+.links-row:focus-visible .links-arrow { transform: translate(2px, -2px); }
+
+/* The lead picture, when the first item is a picture rather than a film:
+   full width, natural shape, loaded straight away. */
+.lead {
+  margin: var(--s6) 0 0;
+}
+
+.lead img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
 
 /* Credits: a plain mono list. */
 .credits {
   list-style: none;
   margin: var(--s3) 0 0;
   padding: 0;
-  max-width: var(--w-text);
   font-family: var(--mono);
   font-size: 0.8125rem;
   line-height: 1.5;
@@ -658,11 +869,20 @@ figure { margin: 0; }
    Date in mono, then the title in serif.
    ================================================================ */
 
+/* The notes page when nothing is published: one quiet line in the muted
+   grey, set like the dates, so it reads as a pause rather than an error. */
+.notes-empty {
+  margin-top: var(--s5);
+  font-family: var(--mono);
+  font-size: 0.8125rem;
+  letter-spacing: 0.02em;
+  color: var(--ink-muted);
+}
+
 .note-list {
   list-style: none;
   margin: var(--s5) 0 0;
   padding: 0;
-  max-width: var(--w-text);
 }
 
 .note-row + .note-row { border-top: 1px solid var(--rule); }
@@ -752,10 +972,11 @@ figure { margin: 0; }
     text-align: right;
   }
 
-  .row-title  { flex: 0 1 auto; min-width: 0; }
+  .row-head   { flex: 0 1 auto; min-width: 0; }
+
+  .links-title { font-size: 1.5rem; }
   .row-client { min-width: 10rem;  text-align: right; }
   .row-year   { min-width: 3rem;   text-align: right; }
-  .row-runtime{ min-width: 4.5rem; text-align: right; }
 
   .note-row {
     flex-direction: row;
