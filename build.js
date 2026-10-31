@@ -1144,8 +1144,18 @@ function wranglerConfig() {
 // Images and fonts never change once published — their filenames carry the
 // size — so they can be cached for a year. HTML changes whenever you rebuild,
 // so it is cached for an hour.
+//
+// The rules must not overlap. When two rules match one address, Cloudflare
+// does not pick one — it joins both values with a comma, so an image used to
+// be sent "max-age=3600, max-age=31536000" and the browser had to guess. Pages
+// are therefore matched by their trailing slash ("/" and "/<anything>/"), which
+// no image, film or font address ever has. Everything else falls back to
+// Cloudflare's default of checking for a newer copy on each visit.
 function headersFile() {
-  return '/*\n' +
+  return '/\n' +
+    '  Cache-Control: public, max-age=3600\n' +
+    '\n' +
+    '/*/\n' +
     '  Cache-Control: public, max-age=3600\n' +
     '\n' +
     '/m/*\n' +
