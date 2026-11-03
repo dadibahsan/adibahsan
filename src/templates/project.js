@@ -4,13 +4,13 @@
 
 'use strict';
 
-const { escapeHtml, plainText, image, mediaUrl } = require('./layout.js');
+const { escapeHtml, plainText, image, mediaUrl, displayYear } = require('./layout.js');
 
 // The mono definition list under the title: YEAR / LANGUAGE / CLIENT /
 // ROLE. Labels are uppercase mono in muted grey; values are in ink.
 function metadata(project) {
   const rows = [
-    ['Year', project.year],
+    ['Year', displayYear(project.year)],
     ['Language', project.language],
     ['Client', project.client],
     ['Role', project.role],
@@ -261,8 +261,9 @@ function structuredData(site, entry) {
     name: p.title,
     description: plainText(entry.summaryHtml),
     // projects.json records a year, not a full date, so the first of that year
-    // stands in for it. Search engines only need it to be a valid date.
-    uploadDate: p.year + '-01-01',
+    // stands in for it. Search engines only need it to be a valid date. For a
+    // span ("2025-2026") the last year is used — when the work was finished.
+    uploadDate: String(p.year).match(/\d{4}/g).pop() + '-01-01',
   };
 
   // A YouTube piece is embedded; a self-hosted one is a file served from this

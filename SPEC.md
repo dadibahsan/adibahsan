@@ -266,7 +266,7 @@ An array of project objects, in the order they should appear. **Order in the fil
 | `title` | string | ✅ | Display title. Any characters, including accents. |
 | `category` | string | ➖ | What kind of work this is, e.g. `"Documentary · Animation & Compositing"`. Shown under the title on the home and work pages, and above the title on the project page. Under 45 characters reads best. |
 | `client` | string | ✅ | Client name, or `"Personal"`. |
-| `year` | number | ✅ | Four digits. |
+| `year` | number \| string | ✅ | Four digits (`2026`), or a span for work made over time (`"2025-2026"`). A span is shown with an en dash: 2025–2026. |
 | `runtime` | string | ➖ | `M:SS` or `MM:SS` — the length of the whole work. **Never shown on the site.** Kept only so the build can warn if a film on the page runs longer than the work it comes from. Safe to leave out. |
 | `language` | string | ✅ | e.g. `"English"`, `"Silent"`. |
 | `role` | string | ✅ | Comma-separated: `"Director, Animation, Edit"`. |

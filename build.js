@@ -401,8 +401,16 @@ function loadProjects() {
     }
 
     // -- year --
-    if (project.year !== undefined && !/^\d{4}$/.test(String(project.year))) {
-      errors.push('✗ ' + entry + ' "year" must be four digits, e.g. 2026. You gave "' + project.year + '".');
+    // One year (2026), or a span of years for work made over time
+    // ("2025-2026"; an en dash works too). The span must run forwards.
+    if (project.year !== undefined) {
+      const span = /^(\d{4})\s*[-–]\s*(\d{4})$/.exec(String(project.year).trim());
+      if (!/^\d{4}$/.test(String(project.year).trim()) && !span) {
+        errors.push('✗ ' + entry + ' "year" must be four digits, e.g. 2026, or a span like "2025-2026". You gave "' + project.year + '".');
+      } else if (span && Number(span[2]) <= Number(span[1])) {
+        errors.push('✗ ' + entry + ' "year" runs backwards or repeats: "' + project.year + '". Put the earlier year first, e.g. "' +
+          Math.min(span[1], span[2]) + '-' + Math.max(span[1], span[2]) + '".');
+      }
     }
 
     // -- runtime: optional, and never shown on the site. It is kept only so the

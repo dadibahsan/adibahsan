@@ -997,7 +997,7 @@ figure { margin: 0; }
     grid-template-columns: subgrid;
   }
   .row-client { min-width: 10rem;  text-align: right; }
-  .row-year   { min-width: 3rem;   text-align: right; }
+  .row-year   { min-width: 4.75rem; text-align: right; }   /* fits "2025–2026" */
 
   .note-row {
     flex-direction: row;

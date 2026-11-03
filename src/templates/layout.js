@@ -100,6 +100,12 @@ function image(record, options) {
     ' ' + loadingAttrs + ' decoding="async">';
 }
 
+// A year as shown on the page. A span typed with a hyphen ("2025-2026") is
+// set with a proper en dash ("2025–2026"), the way a span is printed.
+function displayYear(year) {
+  return String(year).trim().replace(/\s*[-–]\s*/, '–');
+}
+
 // One row of the work manifest: the title on the left with its category
 // underneath, so a visitor can tell at a glance what kind of work each piece
 // is; client and year on the right. The whole row is the click target.
@@ -114,7 +120,7 @@ function manifestRow(project) {
     '</span>',
     '<span class="row-meta">',
     '<span class="row-client">' + escapeHtml(project.client) + '</span>',
-    '<span class="row-year">' + escapeHtml(project.year) + '</span>',
+    '<span class="row-year">' + escapeHtml(displayYear(project.year)) + '</span>',
     '</span>',
     '</a>',
     '</li>',
@@ -249,6 +255,7 @@ module.exports = {
   layout: layout,
   asset: asset,
   mediaUrl: mediaUrl,
+  displayYear: displayYear,
   escapeHtml: escapeHtml,
   plainText: plainText,
   image: image,
