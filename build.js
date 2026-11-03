@@ -1169,7 +1169,7 @@ function headersFile() {
     '\n' +
     // Fingerprinted files: their address changes whenever they do, so they
     // are safe to keep for a year.
-    ['/site.css', '/video.js', '/wordmark.webp', '/wordmark-static.webp'].map(function (file) {
+    ['/site.css', '/video.js', '/wordmark.webp', '/wordmark-static.webp', '/og.jpg'].map(function (file) {
       return file + '\n  Cache-Control: public, max-age=31536000, immutable\n\n';
     }).join('') +
     '/m/*\n' +
@@ -1181,14 +1181,27 @@ function headersFile() {
 
 
 // Copy a finished WebP out of the cache and into dist/m/.
+//
+// Each copy also gets its web address, set once here and used everywhere
+// else. The address is:
+//   - encoded, so a still named "my still.jpg" does not break the page, and
+//   - fingerprinted ("?v=…"), because files in /m/ are cached for a year. A
+//     picture replaced under the same name gets a new address, so visitors
+//     see the new one rather than a year-old copy.
 function publishImage(record, written) {
   record.outputs.forEach(function (out) {
     const from = path.join(CACHE_IMAGES, out.file);
     const to = path.join(DIST, 'm', out.file);
     fs.mkdirSync(path.dirname(to), { recursive: true });
     fs.copyFileSync(from, to);
+    out.url = mediaAddress(out.file, fs.readFileSync(to));
     written.push({ file: toUrlPath(path.join('m', out.file)), bytes: fs.statSync(to).size });
   });
+}
+
+// "/m/" + the file's path with each part encoded, + its fingerprint.
+function mediaAddress(file, contents) {
+  return '/m/' + toUrlPath(file).split('/').map(encodeURIComponent).join('/') + '?v=' + fingerprint(contents);
 }
 
 
@@ -1269,6 +1282,35 @@ async function build() {
     writeFile(asset, data);
     assets[asset] = '/' + asset + '?v=' + fingerprint(data);
   }
+
+  // The link-preview picture for every page that has none of its own — the
+  // homepage, work, about, contact. It is the finished signature centred on
+  // the site's paper, at the 1200x630 size WhatsApp, LinkedIn and X expect.
+  // JPEG rather than WebP, because LinkedIn does not show WebP previews.
+  // The card's background is the colour that appears most often around the
+  // signature image's border — its real background, which compression has
+  // shifted a shade from the site's paper. Matching that, rather than the
+  // paper tone, means the signature sits on the card with no faint box.
+  const signature = fs.readFileSync(path.join(SRC, 'wordmark-static.webp'));
+  const raw = await sharp(signature).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const counts = {};
+  const tally = function (x, y) {
+    const i = (y * raw.info.width + x) * 3;
+    const key = raw.data[i] + ',' + raw.data[i + 1] + ',' + raw.data[i + 2];
+    counts[key] = (counts[key] || 0) + 1;
+  };
+  for (let x = 0; x < raw.info.width; x++) { tally(x, 0); tally(x, raw.info.height - 1); }
+  for (let y = 0; y < raw.info.height; y++) { tally(0, y); tally(raw.info.width - 1, y); }
+  const ground = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a] || (a < b ? -1 : 1); })[0]
+    .split(',').map(Number);
+  const og = await sharp({
+    create: { width: 1200, height: 630, channels: 3, background: { r: ground[0], g: ground[1], b: ground[2] } },
+  })
+    .composite([{ input: signature, gravity: 'center' }])
+    .jpeg({ quality: 88, chromaSubsampling: '4:4:4' })
+    .toBuffer();
+  writeFile('og.jpg', og);
+  assets['og.jpg'] = '/og.jpg?v=' + fingerprint(og);
 
   // The stylesheet, pointing at the fingerprinted wordmark addresses. Its own
   // fingerprint is taken afterwards, so a new wordmark also means a new
@@ -1382,12 +1424,13 @@ async function build() {
       const relative = project.slug + '/' + m.file;
       if (videos[relative]) return;                          // same film listed twice
       const from = path.join(MEDIA, project.slug, m.file);
-      writeFile(path.join('m', project.slug, m.file), fs.readFileSync(from));
+      const film = fs.readFileSync(from);
+      writeFile(path.join('m', project.slug, m.file), film);
       videos[relative] = {
-        // The filename is percent-encoded for the address bar — a film called
-        // "Yacine Athar Series.mp4" has spaces in it, and a raw space in a URL
-        // is not valid. The file on disk keeps its real name.
-        url: '/m/' + encodeURIComponent(project.slug) + '/' + m.file.split('/').map(encodeURIComponent).join('/'),
+        // Encoded — "Yacine Athar Series.mp4" has spaces, which an address
+        // cannot — and fingerprinted, so a re-exported film under the same
+        // name reaches visitors instead of a cached old copy.
+        url: mediaAddress(project.slug + '/' + m.file, film),
         type: VIDEO_TYPES[path.extname(m.file).toLowerCase()] || 'video/mp4',
         size: videoDimensions(from),
       };
@@ -1445,7 +1488,7 @@ async function build() {
     if (posterRecord) {
       const pick = posterRecord.outputs.filter(function (o) { return o.width <= 1200; }).pop()
         || posterRecord.outputs[0];
-      ogImage = '/m/' + pick.file;
+      ogImage = pick.url || '/m/' + pick.file;
     }
 
     // The media list, with each item's files looked up: pictures get their

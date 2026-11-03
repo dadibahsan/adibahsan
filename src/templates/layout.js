@@ -51,6 +51,13 @@ function truncate(text, limit) {
   return (lastSpace > limit * 0.6 ? cut.slice(0, lastSpace) : cut).replace(/[,.;:—-]+$/, '') + '…';
 }
 
+// The web address of one resized picture. The build sets it — encoded and
+// fingerprinted — when it copies the file into place; the plain path is only
+// a fallback.
+function mediaUrl(output) {
+  return output.url || '/m/' + output.file;
+}
+
 /**
  * Build a responsive <img> tag. SPEC.md §8.3.
  *
@@ -76,7 +83,7 @@ function image(record, options) {
   const preferred = outputs.filter(function (o) { return o.width <= 1200; }).pop() || outputs[0];
 
   const srcset = outputs.map(function (o) {
-    return '/m/' + o.file + ' ' + o.width + 'w';
+    return escapeHtml(mediaUrl(o)) + ' ' + o.width + 'w';
   }).join(', ');
 
   // The first image on a page is loaded immediately; everything below the fold
@@ -85,7 +92,7 @@ function image(record, options) {
     ? 'loading="eager" fetchpriority="high"'
     : 'loading="lazy"';
 
-  return '<img src="/m/' + preferred.file + '"' +
+  return '<img src="' + escapeHtml(mediaUrl(preferred)) + '"' +
     ' srcset="' + srcset + '"' +
     ' sizes="' + (opts.sizes || '(max-width: 700px) 100vw, 896px') + '"' +
     ' width="' + displayWidth + '" height="' + displayHeight + '"' +
@@ -172,7 +179,10 @@ function layout(site, page) {
   // Descriptions are capped at 160 characters — SPEC.md §14.1. Cut at the
   // last whole word rather than mid-word, and mark the cut with an ellipsis.
   const description = escapeHtml(truncate(String(page.description || site.tagline), 160));
-  const ogImage = page.ogImage ? site.domain + page.ogImage : '';
+  // Every page gets a picture for link previews: its own (a project's poster),
+  // or failing that the site-wide one built from the signature. Without it, a
+  // link pasted into WhatsApp or LinkedIn shows as bare text.
+  const ogImage = site.domain + (page.ogImage || asset(site, 'og.jpg'));
 
   return [
     '<!doctype html>',
@@ -238,6 +248,7 @@ function layout(site, page) {
 module.exports = {
   layout: layout,
   asset: asset,
+  mediaUrl: mediaUrl,
   escapeHtml: escapeHtml,
   plainText: plainText,
   image: image,

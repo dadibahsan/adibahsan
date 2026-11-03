@@ -200,6 +200,13 @@ p:last-child { margin-bottom: 0; }
   color: var(--ink-muted);
 }
 
+/* A label that opens a section of a page ("Notes", "Credits", "Selected
+   work") brings its own space above it, rather than relying on whatever
+   happens to sit before it. Where the block above already has a bottom
+   margin — the hairline on the homepage — the two overlap rather than add
+   up, so nothing there moves. */
+main > h2.label:not(:first-child) { margin-top: var(--s7); }
+
 /* The hairline is the main structural device on this site. */
 hr {
   height: 0;
@@ -495,7 +502,6 @@ main { padding-top: var(--s8); }          /* major block — §10.4 */
 /* These three are full-width holders so the rail can sit on the media
    edge; the rows inside them carry the reading width instead. */
 .meta-row,
-.credits li,
 .note-row { max-width: var(--w-text); }
 
 @media (min-width: 50rem) {
@@ -596,7 +602,9 @@ figure { margin: 0; }
 
 /* A film served from here takes its own shape — set on the page from the
    film file — rather than the fixed 16:9 of a YouTube player. */
-.v-file { background: var(--ink); }
+/* While the poster frame is on its way, the box shows the same pale
+   placeholder as every picture on the site, not a black hole. */
+.v-file { background: var(--paper-lift); }
 
 /* A vertical film (a reel). At full column width it would be taller than
    the screen, so it gets a narrower box, centred: never wider than 24rem,
@@ -730,18 +738,15 @@ figure { margin: 0; }
   letter-spacing: 0.02em;
 }
 
-.credits li {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s1) var(--s4);
-  padding: var(--s1) 0;
-}
+/* On a phone each credit is two short lines: the role, then the name. */
+.credits li { padding: var(--s1) 0; }
 
 .credit-role {
-  flex: none;
-  width: 8rem;
+  display: block;
   color: var(--ink-muted);
 }
+
+.credit-name { display: block; }
 
 .external { margin-top: var(--s5); }
 
@@ -794,7 +799,7 @@ figure { margin: 0; }
   display: block;
   width: 100%;
   height: 100%;
-  background: var(--ink);
+  background: var(--paper-lift);
 }
 
 /* Only ever seen by a browser that cannot play the file at all. */
@@ -975,6 +980,22 @@ figure { margin: 0; }
   .row-head   { flex: 0 1 auto; min-width: 0; }
 
   .links-title { font-size: 1.5rem; }
+
+  /* Credits as two aligned columns. The role column is as wide as the
+     longest role on the page (up to half the reading width), so a role
+     like "Art Direction and Illustration" stays on one line and every
+     name still lines up under the next. */
+  .credits {
+    display: grid;
+    grid-template-columns: fit-content(21rem) minmax(0, 20rem);
+    column-gap: var(--s4);
+  }
+
+  .credits li {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: subgrid;
+  }
   .row-client { min-width: 10rem;  text-align: right; }
   .row-year   { min-width: 3rem;   text-align: right; }
 

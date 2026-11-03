@@ -4,7 +4,7 @@
 
 'use strict';
 
-const { escapeHtml, plainText, image } = require('./layout.js');
+const { escapeHtml, plainText, image, mediaUrl } = require('./layout.js');
 
 // The mono definition list under the title: YEAR / LANGUAGE / CLIENT /
 // ROLE. Labels are uppercase mono in muted grey; values are in ink.
@@ -50,7 +50,7 @@ function metadata(project) {
 function posterUrl(record) {
   if (!record) return '';
   const pick = record.outputs.filter(function (o) { return o.width <= 1200; }).pop() || record.outputs[0];
-  return '/m/' + pick.file;
+  return mediaUrl(pick);
 }
 
 // Before anyone clicks, this block is a poster image and a button and nothing
@@ -185,6 +185,17 @@ function renderMedia(project, item, isLead, number) {
 }
 
 // The first item, above the summary.
+// A film served from here shows its poster through the <video poster>
+// attribute, which the browser treats as low priority and fetches late —
+// visitors saw an empty box while it arrived. When the lead is such a film,
+// the page names its poster in <head> so the download starts at once. (A
+// YouTube or picture lead is an ordinary <img> loaded straight away already.)
+function leadPreload(entry) {
+  const first = entry.media[0];
+  if (!first || first.type !== 'video' || !first.poster) return '';
+  return '<link rel="preload" as="image" href="' + escapeHtml(posterUrl(first.poster)) + '" fetchpriority="high">';
+}
+
 function lead(entry) {
   if (!entry.media.length) return '';
   return renderMedia(entry.project, entry.media[0], true);
@@ -325,7 +336,7 @@ function project(site, entry) {
     description: plainText(entry.summaryHtml),
     ogType: 'article',
     ogImage: entry.ogImage,
-    head: structuredData(site, entry),
+    head: leadPreload(entry) + structuredData(site, entry),
     body: body,
   };
 }
