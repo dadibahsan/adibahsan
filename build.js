@@ -40,7 +40,7 @@ const { marked } = require('marked');    // turns markdown into HTML
 const matter = require('gray-matter');   // reads the front matter block
 
 // Our own templates.
-const { layout, image } = require('./src/templates/layout.js');
+const { layout, image, film, plainText, posterUrl, posterPreload } = require('./src/templates/layout.js');
 const { home } = require('./src/templates/home.js');
 const { workIndex } = require('./src/templates/work-index.js');
 const { project: projectPage } = require('./src/templates/project.js');
@@ -234,6 +234,23 @@ function checkYoutubeId(value, where) {
     errors.push('✗ ' + where + ' must be the 11-character video ID, not a URL. You gave "' + given + '". Use "' + fromUrl[1] + '".');
   } else {
     errors.push('✗ ' + where + ' must be the 11-character video ID, e.g. "dQw4w9WgXcQ". You gave "' + given + '".');
+  }
+}
+
+// Cloudflare refuses any single file over 25 MiB — and it does not just skip
+// that file, it rejects the WHOLE deployment, so the live site silently stays
+// on its previous version. That makes an oversized film an error here, not a
+// warning: better the build stops on your machine than the publish fails unseen.
+function checkFilmSize(file, name, errorAt, warningAt) {
+  const megabytes = fs.statSync(file).size / (1024 * 1024);
+  if (megabytes > 25) {
+    errors.push('✗ ' + errorAt + ' video "' + name + '" is ' + megabytes.toFixed(2) + ' MB. ' +
+      'Cloudflare rejects the whole site if any one file is over 25 MB, so nothing would publish. ' +
+      'Export it smaller (aim for under 20 MB), or put it on YouTube instead.');
+  } else if (megabytes > 23) {
+    warnings.push('⚠ ' + warningAt + ' video "' + name + '" is ' + megabytes.toFixed(2) +
+      ' MB, very close to Cloudflare\'s 25 MB limit. It will publish, but a slightly longer re-export ' +
+      'would stop the whole site publishing. Under 20 MB leaves room.');
   }
 }
 
@@ -478,21 +495,7 @@ function loadProjects() {
                   'Check whether "runtime" is right.');
               }
 
-              // Cloudflare refuses any single file over 25 MiB — and it does not
-              // just skip that file, it rejects the WHOLE deployment, so the
-              // live site silently stays on its previous version. That makes an
-              // oversized film an error here, not a warning: better the build
-              // stops on your machine than the publish fails unseen.
-              const megabytes = fs.statSync(videoPath).size / (1024 * 1024);
-              if (megabytes > 25) {
-                errors.push('✗ ' + entry + ' video "' + m.file + '" is ' + megabytes.toFixed(2) + ' MB. ' +
-                  'Cloudflare rejects the whole site if any one file is over 25 MB, so nothing would publish. ' +
-                  'Export it smaller (aim for under 20 MB), or put it on YouTube instead.');
-              } else if (megabytes > 23) {
-                warnings.push('⚠ Entry "' + project.slug + '": video "' + m.file + '" is ' + megabytes.toFixed(2) +
-                  ' MB, very close to Cloudflare\'s 25 MB limit. It will publish, but a slightly longer re-export ' +
-                  'would stop the whole site publishing. Under 20 MB leaves room.');
-              }
+              checkFilmSize(videoPath, m.file, entry, 'Entry "' + project.slug + '":');
             }
           }
 
@@ -810,6 +813,27 @@ function formatDate(value) {
   return String(value).slice(0, 10);
 }
 
+// Every picture or film a note's markdown points at, in order, as a path inside
+// media/ ("notes/my-note/breakdown.mp4"). A film is written exactly like a
+// picture — ![what it is](media/notes/my-note/breakdown.mp4) — so markdown
+// turns both into <img>, and the extension says which it is.
+function noteMedia(html) {
+  const found = [];
+  html.replace(/<img\s+src="([^"]+)"/g, function (whole, src) {
+    found.push(decodeURIComponent(src).replace(/^\/?media\//, ''));
+    return whole;
+  });
+  return found;
+}
+
+// A film's cover is the picture beside it with the same name:
+// breakdown.mp4 uses breakdown.jpg. Returns its path inside media/, or null.
+function filmCover(key) {
+  const base = key.replace(/\.[^.]+$/, '');
+  return ['.jpg', '.jpeg', '.png', '.webp'].map(function (ext) { return base + ext; })
+    .find(function (candidate) { return exists(path.join(MEDIA, candidate)); }) || null;
+}
+
 function loadNotes() {
   const dir = path.join(CONTENT, 'notes');
   if (!exists(dir)) return [];
@@ -837,13 +861,34 @@ function loadNotes() {
       return;
     }
 
+    const html = marked.parse(parsed.content);
+
+    // Films in the note must exist, have a cover, and fit Cloudflare's limit.
+    // Skipped for drafts, which are allowed to be unfinished.
+    if (data.draft !== true) {
+      noteMedia(html).filter(function (key) { return VIDEO_FILE.test(key); }).forEach(function (key) {
+        const folder = path.dirname(path.join(MEDIA, key));
+        const name = path.basename(key);
+        if (!exists(path.join(MEDIA, key))) {
+          errors.push('✗ ' + where + ': video "media/' + key + '" not found.' +
+            (exists(folder) ? ' Files present: ' + listFolder(folder) : ' That folder does not exist yet.'));
+          return;
+        }
+        if (!filmCover(key)) {
+          errors.push('✗ ' + where + ': video "' + name + '" needs a cover picture. Put a still frame beside it named "' +
+            name.replace(/\.[^.]+$/, '') + '.jpg". Files present: ' + listFolder(folder));
+        }
+        checkFilmSize(path.join(MEDIA, key), name, where + ':', where + ':');
+      });
+    }
+
     notes.push({
       slug: fileName.replace(/\.md$/, ''),      // the filename becomes the URL
       title: data.title,
       date: date,
       summary: data.summary || '',
       draft: data.draft === true,
-      html: marked.parse(parsed.content),
+      html: html,
     });
   });
 
@@ -1038,18 +1083,27 @@ async function processImage(relative, posters, cache) {
 // full-resolution file, which must never be served. This swaps each one for
 // the resized WebP set, so note images get the same treatment as project
 // stills and break out to full media width. SPEC.md §7.3, §9.5.
-function rewriteNoteImages(html, images) {
+function rewriteNoteImages(html, images, videos) {
   return html.replace(/<img\s+src="([^"]+)"([^>]*)>/g, function (whole, src, rest) {
     const key = decodeURIComponent(src).replace(/^\/?media\//, '');
+
+    // Markdown has already escaped this text, so it is unpacked before the
+    // templates escape it again; otherwise "don't" would read "don&#39;t".
+    const altMatch = /alt="([^"]*)"/.exec(rest);
+    const alt = altMatch ? plainText(altMatch[1]) : '';
+
+    if (videos[key]) {
+      return film({ file: videos[key], poster: images[filmCover(key)] }, { label: alt, className: 'wide' });
+    }
+
     const record = images[key];
     if (!record) return whole;      // not one of ours — leave it alone
 
-    const altMatch = /alt="([^"]*)"/.exec(rest);
-    return '<figure class="wide">' + image(record, { alt: altMatch ? altMatch[1] : '' }) + '</figure>';
+    return '<figure class="wide">' + image(record, { alt: alt }) + '</figure>';
   })
   // Markdown puts an image on its own line inside a paragraph. Lift it out,
   // so the figure can be wider than the paragraph it was sitting in.
-  .replace(/<p>(<figure class="wide">[\s\S]*?<\/figure>)<\/p>/g, '$1');
+  .replace(/<p>(<figure class="[^"]*\bwide\b[^"]*"[^>]*>[\s\S]*?<\/figure>)<\/p>/g, '$1');
 }
 
 /* ================================================================== *
@@ -1445,6 +1499,21 @@ async function build() {
     });
   });
 
+  // Films in published notes, copied the same way.
+  notes.forEach(function (note) {
+    noteMedia(note.html).filter(function (key) { return VIDEO_FILE.test(key); }).forEach(function (key) {
+      if (videos[key]) return;
+      const from = path.join(MEDIA, key);
+      const data = fs.readFileSync(from);
+      writeFile(path.join('m', key), data);
+      videos[key] = {
+        url: mediaAddress(key, data),
+        type: VIDEO_TYPES[path.extname(key).toLowerCase()] || 'video/mp4',
+        size: videoDimensions(from),
+      };
+    });
+  });
+
   // Tell the owner what was left out, so a folder never sits there being
   // silently ignored when they expected it to appear.
   Array.from(skippedFolders).sort().forEach(function (folder) {
@@ -1530,9 +1599,18 @@ async function build() {
   writePage(notesIndex(site, notes));
 
   notes.forEach(function (item, index) {
+    const html = rewriteNoteImages(item.html, images, videos);
+
+    // The note's first picture, or its first film's cover, is what a shared
+    // link shows. If the note opens on a film, that cover is also loaded early.
+    const first = noteMedia(item.html)[0];
+    const picture = first ? images[VIDEO_FILE.test(first) ? filmCover(first) : first] : null;
+
     writePage(notePage(site, {
       note: item,
-      html: rewriteNoteImages(item.html, images),
+      html: html,
+      ogImage: picture ? posterUrl(picture) : null,
+      head: picture && /^\s*<figure class="v /.test(html) ? posterPreload(picture) : '',
       prev: notes[index - 1] || null,      // the newer note
       next: notes[index + 1] || null,      // the older note
     }));

@@ -330,6 +330,8 @@ main { padding-top: var(--s8); }
   margin: var(--s6) 0;
 }
 
+.prose > .v-tall { margin-inline: auto; }
+
 .meta-row,
 .note-row { max-width: var(--w-text); }
 
@@ -742,7 +744,7 @@ figure { margin: 0; }
     gap: var(--s5);
   }
 
-  .note-date { flex: 0 1 6rem; min-width: 0; }
+  .note-date { flex: none; width: 6rem; }
 
   .meta-list dt { width: 7rem; }
 

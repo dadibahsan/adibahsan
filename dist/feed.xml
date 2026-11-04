@@ -6,5 +6,19 @@
   <description>Motion · Film · Design</description>
   <language>en</language>
   <atom:link href="https://adibahsan.com/feed.xml" rel="self" type="application/rss+xml"/>
+  <item>
+    <title>Scene Breakdown: The Day Baghdad Fell</title>
+    <link>https://adibahsan.com/notes/scene-breakdown-the-day-baghdad-fell/</link>
+    <guid isPermaLink="true">https://adibahsan.com/notes/scene-breakdown-the-day-baghdad-fell/</guid>
+    <pubDate>Wed, 04 Nov 2026 00:00:00 GMT</pubDate>
+    <description>A breakdown of one scene from Athar&apos;s Muslims versus Mongols series.</description>
+  </item>
+  <item>
+    <title>Scene Breakdown: The Map</title>
+    <link>https://adibahsan.com/notes/scene-breakdown-the-map/</link>
+    <guid isPermaLink="true">https://adibahsan.com/notes/scene-breakdown-the-map/</guid>
+    <pubDate>Tue, 03 Nov 2026 00:00:00 GMT</pubDate>
+    <description>A dangerously simple scene from Athar&apos;s Muslims versus Mongols series.</description>
+  </item>
 </channel>
 </rss>

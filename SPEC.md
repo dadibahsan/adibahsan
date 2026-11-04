@@ -379,7 +379,12 @@ Body in markdown. Headings, paragraphs, lists, links, images.
 
 Images reference `media/notes/<slug>/filename.jpg` and are processed
 identically to project stills.
+
+A film is written the same way as an image, pointing at the video file:
+![What the film shows](media/notes/<slug>/breakdown.mp4)
 ```
+
+A film in a note needs a cover: a picture beside it with the same name (`breakdown.mp4` uses `breakdown.jpg`). Nothing downloads until play is pressed. The same rules as project films apply: `.mp4`, `.webm` or `.mov`, copied untouched, and the build stops if a file is over Cloudflare's 25 MB limit. The note's first picture or film cover is what a shared link shows.
 
 Filename becomes the URL: `content/notes/foo.md` → `/notes/foo/`. Sorted by `date`, newest first.
 

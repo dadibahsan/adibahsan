@@ -1,7 +1,7 @@
 // note.js — a single note, "/notes/<slug>/". SPEC.md §9.5.
 //
-// The body is markdown rendered at text width. Any images inside it break out
-// of the text column and run at full media width.
+// The body is markdown rendered at text width. Any pictures or films inside it
+// break out of the text column and run at full media width.
 
 'use strict';
 
@@ -26,17 +26,20 @@ function prevNext(entry) {
 
 /**
  * @param {object} site   Parsed content/site.json
- * @param {object} entry  { note, html, prev, next }
+ * @param {object} entry  { note, html, prev, next, ogImage, head }
  */
 function note(site, entry) {
   const n = entry.note;
+  const nav = prevNext(entry);
 
   const body = [
     '<h1>' + escapeHtml(n.title) + '</h1>',
     '<p class="note-date"><time datetime="' + escapeHtml(n.date) + '">' + escapeHtml(n.date) + '</time></p>',
     '<div class="prose note-prose">' + entry.html + '</div>',
-    '<hr>',
-    prevNext(entry),
+    // The hairline only exists to sit above the links. With nothing to link to,
+    // it would float alone over an empty strip above the footer.
+    nav ? '<hr>' : '',
+    nav,
   ].filter(function (line) { return line !== ''; }).join('\n');
 
   return {
@@ -44,6 +47,8 @@ function note(site, entry) {
     title: n.title,
     description: n.summary || plainText(entry.html),
     ogType: 'article',
+    ogImage: entry.ogImage,
+    head: entry.head,
     body: body,
   };
 }

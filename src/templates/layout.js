@@ -100,6 +100,72 @@ function image(record, options) {
     ' ' + loadingAttrs + ' decoding="async">';
 }
 
+// A cover frame as a single address, for places that take one picture rather
+// than a responsive set: the <video poster> attribute and link previews. The
+// 1200px version is sharp enough for both.
+function posterUrl(record) {
+  if (!record) return '';
+  const pick = record.outputs.filter(function (o) { return o.width <= 1200; }).pop() || record.outputs[0];
+  return mediaUrl(pick);
+}
+
+// A film's cover goes through the <video poster> attribute, which the browser
+// treats as low priority and fetches late, so visitors saw an empty box while
+// it arrived. Naming it in <head> starts the download straight away. Only worth
+// doing for a film at the top of the page.
+function posterPreload(record) {
+  if (!record) return '';
+  return '<link rel="preload" as="image" href="' + escapeHtml(posterUrl(record)) + '" fetchpriority="high">';
+}
+
+// A film served from this site, in the browser's own player. Its controls are
+// already keyboard accessible, already translated and already familiar, so
+// there is nothing to build. Used by project pages and by notes.
+//
+// @param {object} item     { file: { url, type, size }, poster: image record }
+// @param {object} options  { label: what the film is, read out by screen
+//                            readers; className: extra classes for the box }
+function film(item, options) {
+  const opts = options || {};
+  const posterRecord = item.poster;
+
+  // The box is given the film's exact shape before anything loads, so the page
+  // never jumps when play is pressed. The shape is read from the film file
+  // itself; failing that, from its poster; failing that, 16:9.
+  let width = 1600;
+  let height = 900;
+  if (item.file.size) {
+    width = item.file.size.width;
+    height = item.file.size.height;
+  } else if (posterRecord) {
+    width = posterRecord.outputs[posterRecord.outputs.length - 1].width;
+    height = Math.round(width * posterRecord.height / posterRecord.width);
+  }
+  const poster = posterUrl(posterRecord);
+
+  // A vertical film — a reel — is not stretched to the full column, which
+  // would make it taller than the screen. It gets its own narrower box,
+  // centred, sized to fit on screen. --ratio carries its proportions to the
+  // stylesheet so that box can be worked out there.
+  const tall = height > width;
+  const ratio = (width / height).toFixed(4);
+  const style = 'aspect-ratio: ' + width + ' / ' + height + (tall ? '; --ratio: ' + ratio : '');
+  const classes = ['v', 'v-file', tall ? 'v-tall' : '', opts.className || ''].filter(Boolean).join(' ');
+
+  return [
+    '<figure class="' + classes + '" style="' + style + '">',
+    '<video controls playsinline preload="none"',
+    opts.label ? ' aria-label="' + escapeHtml(opts.label) + '"' : '',
+    poster ? ' poster="' + escapeHtml(poster) + '"' : '',
+    ' width="' + width + '" height="' + height + '">',
+    '<source src="' + escapeHtml(item.file.url) + '" type="' + escapeHtml(item.file.type) + '">',
+    // Shown only by a browser that cannot play the file at all.
+    '<p class="v-fallback"><a href="' + escapeHtml(item.file.url) + '">Download the film</a></p>',
+    '</video>',
+    '</figure>',
+  ].join('');
+}
+
 // A year as shown on the page. A span typed with a hyphen ("2025-2026") is
 // set with a proper en dash ("2025–2026"), the way a span is printed.
 function displayYear(year) {
@@ -255,6 +321,9 @@ module.exports = {
   layout: layout,
   asset: asset,
   mediaUrl: mediaUrl,
+  posterUrl: posterUrl,
+  posterPreload: posterPreload,
+  film: film,
   displayYear: displayYear,
   escapeHtml: escapeHtml,
   plainText: plainText,

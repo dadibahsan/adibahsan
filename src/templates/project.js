@@ -4,7 +4,7 @@
 
 'use strict';
 
-const { escapeHtml, plainText, image, mediaUrl, displayYear } = require('./layout.js');
+const { escapeHtml, plainText, image, film, posterPreload, displayYear } = require('./layout.js');
 
 // The mono definition list under the title: YEAR / LANGUAGE / CLIENT /
 // ROLE. Labels are uppercase mono in muted grey; values are in ink.
@@ -44,15 +44,6 @@ function metadata(project) {
  * scrolls near it. SPEC.md §9.3.
  * ------------------------------------------------------------------ */
 
-// The poster frame as a plain URL, for the <video poster> attribute, which
-// takes a single image rather than a responsive set. The 1200px version is
-// the same one used for link previews.
-function posterUrl(record) {
-  if (!record) return '';
-  const pick = record.outputs.filter(function (o) { return o.width <= 1200; }).pop() || record.outputs[0];
-  return mediaUrl(pick);
-}
-
 // Before anyone clicks, this block is a poster image and a button and nothing
 // else — no YouTube code, and not a single request to Google. With JavaScript
 // switched off, the <noscript> link still takes them to the video.
@@ -67,47 +58,6 @@ function youtubeFacade(project, item, isLead) {
     '<noscript>',
     '<a href="https://www.youtube.com/watch?v=' + id + '">Watch on YouTube</a>',
     '</noscript>',
-    '</figure>',
-  ].join('');
-}
-
-// A native <video>. The browser's own controls are used rather than a custom
-// set: they are already keyboard accessible, already translated, and already
-// familiar.
-function selfHosted(project, item) {
-  const posterRecord = item.poster;
-
-  // The box is given the film's exact shape before anything loads, so the page
-  // never jumps when play is pressed. The shape is read from the film file
-  // itself; failing that, from its poster; failing that, 16:9.
-  let width = 1600;
-  let height = 900;
-  if (item.file.size) {
-    width = item.file.size.width;
-    height = item.file.size.height;
-  } else if (posterRecord) {
-    width = posterRecord.outputs[posterRecord.outputs.length - 1].width;
-    height = Math.round(width * posterRecord.height / posterRecord.width);
-  }
-  const poster = posterUrl(posterRecord);
-
-  // A vertical film — a reel — is not stretched to the full column, which
-  // would make it taller than the screen. It gets its own narrower box,
-  // centred, sized to fit on screen. --ratio carries its proportions to the
-  // stylesheet so that box can be worked out there.
-  const tall = height > width;
-  const ratio = (width / height).toFixed(4);
-  const style = 'aspect-ratio: ' + width + ' / ' + height + (tall ? '; --ratio: ' + ratio : '');
-
-  return [
-    '<figure class="v v-file' + (tall ? ' v-tall' : '') + '" style="' + style + '">',
-    '<video controls playsinline preload="none"',
-    poster ? ' poster="' + escapeHtml(poster) + '"' : '',
-    ' width="' + width + '" height="' + height + '">',
-    '<source src="' + escapeHtml(item.file.url) + '" type="' + escapeHtml(item.file.type) + '">',
-    // Shown only by a browser that cannot play the file at all.
-    '<p class="v-fallback"><a href="' + escapeHtml(item.file.url) + '">Download the film</a></p>',
-    '</video>',
     '</figure>',
   ].join('');
 }
@@ -174,7 +124,7 @@ function linksBlock(item, number) {
 // One item, whichever kind it is.
 function renderMedia(project, item, isLead, number) {
   if (item.type === 'youtube') return youtubeFacade(project, item, isLead);
-  if (item.type === 'video') return selfHosted(project, item);
+  if (item.type === 'video') return film(item, { label: project.title });
   if (item.type === 'links') return linksBlock(item, number);
   if (item.type === 'image') {
     return isLead
@@ -185,15 +135,13 @@ function renderMedia(project, item, isLead, number) {
 }
 
 // The first item, above the summary.
-// A film served from here shows its poster through the <video poster>
-// attribute, which the browser treats as low priority and fetches late —
-// visitors saw an empty box while it arrived. When the lead is such a film,
-// the page names its poster in <head> so the download starts at once. (A
-// YouTube or picture lead is an ordinary <img> loaded straight away already.)
+// When the lead is a film served from here, name its cover in <head> so it
+// loads early. (A YouTube or picture lead is an ordinary <img>, loaded straight
+// away already.)
 function leadPreload(entry) {
   const first = entry.media[0];
-  if (!first || first.type !== 'video' || !first.poster) return '';
-  return '<link rel="preload" as="image" href="' + escapeHtml(posterUrl(first.poster)) + '" fetchpriority="high">';
+  if (!first || first.type !== 'video') return '';
+  return posterPreload(first.poster);
 }
 
 function lead(entry) {
@@ -294,6 +242,8 @@ function structuredData(site, entry) {
 function project(site, entry) {
   const p = entry.project;
 
+  const nav = prevNext(entry);
+
   const body = [
     // 1. what kind of work this is, then the title
     p.category ? '<p class="kicker">' + escapeHtml(p.category) + '</p>' : '',
@@ -325,10 +275,10 @@ function project(site, entry) {
       : '',
 
     // 9. hairline
-    '<hr>',
+    nav ? '<hr>' : '',
 
     // 10. previous / next
-    prevNext(entry),
+    nav,
   ].filter(function (line) { return line !== ''; }).join('\n');
 
   return {

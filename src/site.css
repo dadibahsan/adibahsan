@@ -473,6 +473,9 @@ main { padding-top: var(--s8); }          /* major block — §10.4 */
   margin: var(--s6) 0;
 }
 
+/* A vertical film in a note stays centred, like one on a project page. */
+.prose > .v-tall { margin-inline: auto; }
+
 
 /* ================================================================
    THE RAIL
@@ -1005,7 +1008,9 @@ figure { margin: 0; }
     gap: var(--s5);
   }
 
-  .note-date { flex: 0 1 6rem; min-width: 0; }
+  /* A fixed column, so a long summary can't squeeze the date and push its
+     title out of line with the other notes. */
+  .note-date { flex: none; width: 6rem; }
 
   .meta-list dt { width: 7rem; }
 
