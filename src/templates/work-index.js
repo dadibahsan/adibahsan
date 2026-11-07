@@ -5,7 +5,7 @@
 
 'use strict';
 
-const { manifestRow } = require('./layout.js');
+const { manifestRow, escapeHtml } = require('./layout.js');
 
 /**
  * @param {object} site      Parsed content/site.json
@@ -17,7 +17,9 @@ function workIndex(site, projects) {
     projects.length
       ? '<ul class="manifest">' + projects.map(manifestRow).join('') + '</ul>'
       : '<p>Nothing published yet.</p>',
-  ].join('\n');
+    // One quiet line under the list, from "workNote" in site.json.
+    projects.length && site.workNote ? '<p class="work-note">' + escapeHtml(site.workNote) + '</p>' : '',
+  ].filter(function (line) { return line !== ''; }).join('\n');
 
   return {
     path: '/work/',

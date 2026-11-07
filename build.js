@@ -170,6 +170,9 @@ function loadSite() {
   if (site.nav && !Array.isArray(site.nav)) {
     errors.push('✗ content/site.json: "nav" must be a list, e.g. ["work", "notes", "about", "contact"].');
   }
+  if (site.workNote !== undefined && typeof site.workNote !== 'string') {
+    errors.push('✗ content/site.json: "workNote" must be a line of text in quotes, or left out entirely.');
+  }
   if (site.elsewhere && !Array.isArray(site.elsewhere)) {
     errors.push('✗ content/site.json: "elsewhere" must be a list, or left out entirely.');
   }

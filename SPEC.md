@@ -245,6 +245,7 @@ node_modules/
   "domain": "{{DOMAIN}}",
   "lang": "{{PRIMARY_LANGUAGE}}",
   "nav": ["work", "notes", "about", "contact"],
+  "workNote": "{{WORK_NOTE}}",
   "elsewhere": [
     { "label": "Platform name", "url": "https://..." }
   ],
@@ -252,7 +253,7 @@ node_modules/
 }
 ```
 
-All fields required except `elsewhere` (may be an empty array) and `footerNote`.
+All fields required except `elsewhere` (may be an empty array), `footerNote` and `workNote`. `workNote` is one plain line shown in grey under the list on the Work page only; leave it out to show nothing.
 
 ### 7.2 `content/projects.json`
 

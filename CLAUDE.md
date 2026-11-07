@@ -11,3 +11,4 @@ This is a static portfolio site. The full specification is in SPEC.md — read i
 - The owner is not a developer. Explain changes in plain English and keep error
   messages plain English.
 - After any change, run `npm run build` and confirm it succeeds before saying you're done.
+- After every finished task, add each decision made and why, as one line, to claude-context.md. Read it at the start of a session.
