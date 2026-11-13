@@ -65,3 +65,4 @@ One line per decision: what we decided, and why. Newest at the bottom. Updated a
 - Explain changes briefly in plain English: long technical replies were not understood.
 - Every decision and its reason is logged here in one line when a task finishes: the owner's ground rule.
 - Auto-compact is set to 500k tokens (owner ran /autocompact 500000): saves usage; claude-context.md keeps decisions safe through compaction.
+- Link preview for home, work, about and contact uses the owner's artwork in src/og.jpg (1200x630 JPG), falling back to the signature card if removed: a recognisable face and name stand out in chats.

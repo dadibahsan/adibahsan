@@ -1356,6 +1356,18 @@ async function build() {
   // signature image's border — its real background, which compression has
   // shifted a shade from the site's paper. Matching that, rather than the
   // paper tone, means the signature sits on the card with no faint box.
+  // If src/og.jpg exists (the owner's own artwork), it is used exactly as made
+  // instead, after checking it is a 1200x630 JPEG.
+  const ogArt = path.join(SRC, 'og.jpg');
+  let og;
+  if (fs.existsSync(ogArt)) {
+    og = fs.readFileSync(ogArt);
+    const m = await sharp(og).metadata();
+    if (m.format !== 'jpeg' || m.width !== 1200 || m.height !== 630) {
+      errors.push('✗ src/og.jpg: the link preview picture must be a JPG of exactly 1200 x 630 pixels. ' +
+        'Yours is a ' + String(m.format).toUpperCase() + ' of ' + m.width + ' x ' + m.height + '.');
+    }
+  } else {
   const signature = fs.readFileSync(path.join(SRC, 'wordmark-static.webp'));
   const raw = await sharp(signature).removeAlpha().raw().toBuffer({ resolveWithObject: true });
   const counts = {};
@@ -1368,12 +1380,13 @@ async function build() {
   for (let y = 0; y < raw.info.height; y++) { tally(0, y); tally(raw.info.width - 1, y); }
   const ground = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a] || (a < b ? -1 : 1); })[0]
     .split(',').map(Number);
-  const og = await sharp({
+  og = await sharp({
     create: { width: 1200, height: 630, channels: 3, background: { r: ground[0], g: ground[1], b: ground[2] } },
   })
     .composite([{ input: signature, gravity: 'center' }])
     .jpeg({ quality: 88, chromaSubsampling: '4:4:4' })
     .toBuffer();
+  }
   writeFile('og.jpg', og);
   assets['og.jpg'] = '/og.jpg?v=' + fingerprint(og);
 
